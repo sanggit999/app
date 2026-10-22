@@ -6,6 +6,9 @@
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
 
+# Play Core deferred components optional warnings
+-dontwarn com.google.android.play.core.**
+
 # Fix for shared_preferences_android 2.5.0+ NoSuchMethodError in API registrar
 -keep class kotlin.Unit { *; }
 -keep class kotlin.coroutines.Continuation { *; }
