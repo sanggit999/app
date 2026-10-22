@@ -9,6 +9,7 @@ class ModelDownloadProgress {
   final int receivedBytes;
   final int totalBytes;
   final bool isCompleted;
+  final bool isPaused;
   final String? error;
 
   const ModelDownloadProgress({
@@ -16,13 +17,14 @@ class ModelDownloadProgress {
     required this.receivedBytes,
     required this.totalBytes,
     this.isCompleted = false,
+    this.isPaused = false,
     this.error,
   });
 
   String get receivedMb => (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
   String get totalMb => totalBytes > 0
       ? (totalBytes / (1024 * 1024)).toStringAsFixed(1)
-      : '350.0';
+      : '360.0';
   int get percent => (fraction * 100).clamp(0, 100).toInt();
 }
 
@@ -39,6 +41,7 @@ class ModelManager {
       StreamController<ModelDownloadProgress>.broadcast();
 
   bool _isDownloading = false;
+  bool _cancelRequested = false;
 
   ModelManager({http.Client? client}) : _client = client ?? http.Client();
 
@@ -73,6 +76,18 @@ class ModelManager {
     return length > 300 * 1024 * 1024;
   }
 
+  /// Trả về số byte của file part đang tải dở (nếu có)
+  Future<int> getPartialDownloadedSizeBytes([
+    String fileName = defaultModelFileName,
+  ]) async {
+    final targetPath = await getModelFilePath(fileName);
+    final tempFile = File('$targetPath.part');
+    if (await tempFile.exists()) {
+      return await tempFile.length();
+    }
+    return 0;
+  }
+
   Future<int> getDownloadedSizeBytes([
     String fileName = defaultModelFileName,
   ]) async {
@@ -84,50 +99,127 @@ class ModelManager {
     return 0;
   }
 
+  void cancelOrPauseDownload() {
+    if (_isDownloading) {
+      _cancelRequested = true;
+    }
+  }
+
   Future<void> downloadModel({
     String url = defaultModelDownloadUrl,
     String fileName = defaultModelFileName,
   }) async {
     if (_isDownloading) return;
     _isDownloading = true;
+    _cancelRequested = false;
 
     final targetPath = await getModelFilePath(fileName);
     final tempPath = '$targetPath.part';
     final tempFile = File(tempPath);
+
+    int existingBytes = 0;
     if (await tempFile.exists()) {
-      await tempFile.delete();
+      existingBytes = await tempFile.length();
     }
 
     try {
-      final request = http.Request('GET', Uri.parse(url));
+      final uri = Uri.parse(url);
+      final request = http.Request('GET', uri);
+
+      if (existingBytes > 0) {
+        request.headers['Range'] = 'bytes=$existingBytes-';
+      }
+
       final response = await _client.send(request);
 
-      if (response.statusCode != 200) {
+      // 206: Partial Content (Resume thành công)
+      // 200: Server gửi toàn bộ file từ đầu (nếu server không hỗ trợ range hoặc file chưa tải gì)
+      // 416: Range Not Satisfiable (file part đã tải trọn vẹn)
+      if (response.statusCode != 200 &&
+          response.statusCode != 206 &&
+          response.statusCode != 416) {
         throw Exception('Server responded with HTTP ${response.statusCode}');
       }
 
-      final totalBytes = response.contentLength ?? 360 * 1024 * 1024;
-      int receivedBytes = 0;
+      int totalBytes = 0;
+      bool isResume = response.statusCode == 206;
 
-      final sink = tempFile.openWrite();
-
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        receivedBytes += chunk.length;
-        final fraction = totalBytes > 0
-            ? (receivedBytes / totalBytes).clamp(0.0, 1.0)
-            : 0.0;
-        _progressController.add(
-          ModelDownloadProgress(
-            fraction: fraction,
-            receivedBytes: receivedBytes,
-            totalBytes: totalBytes,
-          ),
-        );
+      if (isResume) {
+        final contentRange = response.headers['content-range'];
+        if (contentRange != null && contentRange.contains('/')) {
+          final totalStr = contentRange.split('/').last.trim();
+          totalBytes = int.tryParse(totalStr) ?? (existingBytes + (response.contentLength ?? 0));
+        } else {
+          totalBytes = existingBytes + (response.contentLength ?? 0);
+        }
+      } else if (response.statusCode == 416) {
+        // Đã hoàn thành toàn bộ bytes
+        totalBytes = existingBytes;
+      } else {
+        // Status 200: tải mới từ đầu, reset file part nếu có
+        existingBytes = 0;
+        totalBytes = response.contentLength ?? 360 * 1024 * 1024;
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
       }
 
-      await sink.flush();
-      await sink.close();
+      int receivedBytes = existingBytes;
+
+      if (response.statusCode != 416) {
+        final sink = tempFile.openWrite(
+          mode: isResume ? FileMode.append : FileMode.write,
+        );
+
+        await for (final chunk in response.stream) {
+          if (_cancelRequested) {
+            await sink.flush();
+            await sink.close();
+            _progressController.add(
+              ModelDownloadProgress(
+                fraction: totalBytes > 0
+                    ? (receivedBytes / totalBytes).clamp(0.0, 1.0)
+                    : 0.0,
+                receivedBytes: receivedBytes,
+                totalBytes: totalBytes,
+                isPaused: true,
+              ),
+            );
+            return;
+          }
+
+          sink.add(chunk);
+          receivedBytes += chunk.length;
+          final fraction = totalBytes > 0
+              ? (receivedBytes / totalBytes).clamp(0.0, 1.0)
+              : 0.0;
+
+          _progressController.add(
+            ModelDownloadProgress(
+              fraction: fraction,
+              receivedBytes: receivedBytes,
+              totalBytes: totalBytes,
+            ),
+          );
+        }
+
+        await sink.flush();
+        await sink.close();
+      }
+
+      if (_cancelRequested) {
+        _progressController.add(
+          ModelDownloadProgress(
+            fraction: totalBytes > 0
+                ? (receivedBytes / totalBytes).clamp(0.0, 1.0)
+                : 0.0,
+            receivedBytes: receivedBytes,
+            totalBytes: totalBytes,
+            isPaused: true,
+          ),
+        );
+        return;
+      }
 
       // Rename .part to final .gguf
       final finalFile = File(targetPath);
@@ -140,25 +232,36 @@ class ModelManager {
         ModelDownloadProgress(
           fraction: 1.0,
           receivedBytes: receivedBytes,
-          totalBytes: totalBytes,
+          totalBytes: totalBytes > 0 ? totalBytes : receivedBytes,
           isCompleted: true,
         ),
       );
     } catch (e) {
+      if (_cancelRequested) {
+        _progressController.add(
+          ModelDownloadProgress(
+            fraction: 0.0,
+            receivedBytes: existingBytes,
+            totalBytes: 0,
+            isPaused: true,
+          ),
+        );
+        return;
+      }
+
       _progressController.add(
         ModelDownloadProgress(
           fraction: 0.0,
-          receivedBytes: 0,
+          receivedBytes: existingBytes,
           totalBytes: 0,
           error: e.toString(),
         ),
       );
-      if (await tempFile.exists()) {
-        await tempFile.delete();
-      }
+      // Giữ lại file .part để người dùng có thể tiếp tục tải sau mà không mất dữ liệu đã tải!
       rethrow;
     } finally {
       _isDownloading = false;
+      _cancelRequested = false;
     }
   }
 
@@ -167,6 +270,10 @@ class ModelManager {
     final file = File(path);
     if (await file.exists()) {
       await file.delete();
+    }
+    final partFile = File('$path.part');
+    if (await partFile.exists()) {
+      await partFile.delete();
     }
   }
 

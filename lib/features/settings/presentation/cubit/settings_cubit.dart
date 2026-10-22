@@ -41,14 +41,31 @@ class SettingsCubit extends Cubit<SettingsState> {
         emit(
           state.copyWith(
             isDownloadingModel: false,
-            downloadStatusText: 'Lỗi tải: ${prog.error}',
+            isDownloadPaused: true,
+            hasPartialDownload: prog.receivedBytes > 0,
+            partialDownloadedMb: prog.receivedMb,
+            downloadStatusText: 'Tạm dừng do mạng/lỗi. Bấm Tiếp Tục để tải tiếp.',
+          ),
+        );
+      } else if (prog.isPaused) {
+        emit(
+          state.copyWith(
+            isDownloadingModel: false,
+            isDownloadPaused: true,
+            hasPartialDownload: prog.receivedBytes > 0,
+            partialDownloadedMb: prog.receivedMb,
+            downloadProgress: prog.fraction,
+            downloadStatusText:
+                'Đã tạm dừng (${prog.receivedMb} MB / ${prog.totalMb} MB).',
           ),
         );
       } else if (prog.isCompleted) {
         emit(
           state.copyWith(
             isDownloadingModel: false,
+            isDownloadPaused: false,
             isModelDownloaded: true,
+            hasPartialDownload: false,
             downloadProgress: 1.0,
             downloadStatusText: 'Tải hoàn tất! Model sẵn sàng 100%.',
           ),
@@ -58,6 +75,9 @@ class SettingsCubit extends Cubit<SettingsState> {
         emit(
           state.copyWith(
             isDownloadingModel: true,
+            isDownloadPaused: false,
+            hasPartialDownload: true,
+            partialDownloadedMb: prog.receivedMb,
             downloadProgress: prog.fraction,
             downloadStatusText:
                 '${prog.receivedMb} MB / ${prog.totalMb} MB (${prog.percent}%)',
@@ -80,6 +100,12 @@ class SettingsCubit extends Cubit<SettingsState> {
     final profile = LanguageRegistry.getProfile(langCode);
 
     final isDownloaded = await modelManager?.isModelDownloaded() ?? false;
+    final partSizeBytes =
+        await modelManager?.getPartialDownloadedSizeBytes() ?? 0;
+    final hasPart = !isDownloaded && partSizeBytes > 0;
+    final partMb = (partSizeBytes / (1024 * 1024)).toStringAsFixed(1);
+    final approxFraction =
+        hasPart ? (partSizeBytes / (360 * 1024 * 1024)).clamp(0.0, 1.0) : 0.0;
 
     emit(
       state.copyWith(
@@ -90,6 +116,12 @@ class SettingsCubit extends Cubit<SettingsState> {
         voiceGender: gender,
         currentLanguage: profile,
         isModelDownloaded: isDownloaded,
+        hasPartialDownload: hasPart,
+        partialDownloadedMb: partMb,
+        downloadProgress: approxFraction,
+        downloadStatusText: hasPart
+            ? 'Đang có bản tải dở ($partMb MB / ~360 MB). Bấm để tải tiếp.'
+            : '',
       ),
     );
 
@@ -107,12 +139,16 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   Future<void> startModelDownload() async {
     if (modelManager == null || state.isDownloadingModel) return;
+
+    final initialText = state.hasPartialDownload
+        ? 'Đang kết nối để tải tiếp từ ${state.partialDownloadedMb} MB...'
+        : 'Đang kết nối tải mô hình Qwen 2.5 0.5B (~360MB)...';
+
     emit(
       state.copyWith(
         isDownloadingModel: true,
-        downloadProgress: 0.0,
-        downloadStatusText:
-            'Đang kết nối tải mô hình Qwen 2.5 0.5B (~350MB)...',
+        isDownloadPaused: false,
+        downloadStatusText: initialText,
       ),
     );
 
@@ -123,11 +159,20 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
+  void pauseOrCancelModelDownload() {
+    if (modelManager == null || !state.isDownloadingModel) return;
+    modelManager!.cancelOrPauseDownload();
+  }
+
   Future<void> deleteModel() async {
     await modelManager?.deleteModel();
     emit(
       state.copyWith(
         isModelDownloaded: false,
+        isDownloadingModel: false,
+        isDownloadPaused: false,
+        hasPartialDownload: false,
+        partialDownloadedMb: '0.0',
         downloadProgress: 0.0,
         downloadStatusText: '',
       ),

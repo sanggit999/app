@@ -339,11 +339,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 14),
 
         if (state.isDownloadingModel) ...[
-          Text(
-            'Tiến trình tải mô hình:',
-            style: AppTypography.bodySmall.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tiến trình tải mô hình:',
+                style: AppTypography.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => cubit.pauseOrCancelModelDownload(),
+                icon: const Icon(Icons.pause_rounded, size: 16),
+                label: const Text('Tạm dừng'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           ClipRRect(
@@ -385,7 +400,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Đã cài đặt sẵn sàng (~350MB)',
+                    'Đã cài đặt sẵn sàng (~360MB)',
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.success,
                       fontWeight: FontWeight.w600,
@@ -410,11 +425,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+        ] else if (state.hasPartialDownload) ...[
+          // Đang có file tải dở: cho phép Tải tiếp hoặc Xóa làm lại từ đầu
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.history_rounded, color: Colors.amber, size: 18),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Đã tải trước ${state.partialDownloadedMb} MB (~${(state.downloadProgress * 100).toInt()}%)',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.amber[200] : Colors.amber[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: state.downloadProgress > 0 ? state.downloadProgress : null,
+                    minHeight: 6,
+                    backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => cubit.startModelDownload(),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                        label: Text('Tiếp tục tải (${state.partialDownloadedMb} MB)'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => cubit.deleteModel(),
+                      icon: const Icon(Icons.refresh_rounded, size: 16),
+                      label: const Text('Xóa tải lại'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ] else ...[
           ElevatedButton.icon(
             onPressed: () => cubit.startModelDownload(),
             icon: const Icon(Icons.cloud_download_rounded, size: 20),
-            label: const Text('Tải Mô Hình On-Device ngay (~350MB)'),
+            label: const Text('Tải Mô Hình On-Device ngay (~360MB)'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,

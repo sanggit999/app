@@ -15,8 +15,11 @@ class SettingsState extends Equatable {
   final String? connectionError;
   final bool isModelDownloaded;
   final bool isDownloadingModel;
+  final bool isDownloadPaused;
   final double downloadProgress;
   final String downloadStatusText;
+  final bool hasPartialDownload;
+  final String partialDownloadedMb;
 
   const SettingsState({
     this.executionMode = 'ollama',
@@ -29,8 +32,11 @@ class SettingsState extends Equatable {
     this.connectionError,
     this.isModelDownloaded = false,
     this.isDownloadingModel = false,
+    this.isDownloadPaused = false,
     this.downloadProgress = 0.0,
     this.downloadStatusText = '',
+    this.hasPartialDownload = false,
+    this.partialDownloadedMb = '0.0',
   });
 
   bool get isOnDevice => executionMode == 'on_device';
@@ -47,8 +53,11 @@ class SettingsState extends Equatable {
     bool clearConnectionError = false,
     bool? isModelDownloaded,
     bool? isDownloadingModel,
+    bool? isDownloadPaused,
     double? downloadProgress,
     String? downloadStatusText,
+    bool? hasPartialDownload,
+    String? partialDownloadedMb,
   }) {
     return SettingsState(
       executionMode: executionMode ?? this.executionMode,
@@ -63,8 +72,11 @@ class SettingsState extends Equatable {
           : (connectionError ?? this.connectionError),
       isModelDownloaded: isModelDownloaded ?? this.isModelDownloaded,
       isDownloadingModel: isDownloadingModel ?? this.isDownloadingModel,
+      isDownloadPaused: isDownloadPaused ?? this.isDownloadPaused,
       downloadProgress: downloadProgress ?? this.downloadProgress,
       downloadStatusText: downloadStatusText ?? this.downloadStatusText,
+      hasPartialDownload: hasPartialDownload ?? this.hasPartialDownload,
+      partialDownloadedMb: partialDownloadedMb ?? this.partialDownloadedMb,
     );
   }
 
@@ -80,7 +92,10 @@ class SettingsState extends Equatable {
     connectionError,
     isModelDownloaded,
     isDownloadingModel,
+    isDownloadPaused,
     downloadProgress,
     downloadStatusText,
+    hasPartialDownload,
+    partialDownloadedMb,
   ];
 }
