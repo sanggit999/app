@@ -11,6 +11,8 @@ class VoiceChatState extends Equatable {
   final String? speakingMessageId;
   final String? errorMessage;
   final bool autoPlayTts;
+  final bool isLiveMode;
+  final String liveStatus; // 'idle', 'listening', 'thinking', 'speaking'
 
   const VoiceChatState({
     this.messages = const [],
@@ -21,7 +23,9 @@ class VoiceChatState extends Equatable {
     this.isStreaming = false,
     this.speakingMessageId,
     this.errorMessage,
-    this.autoPlayTts = true,
+    this.autoPlayTts = false,
+    this.isLiveMode = false,
+    this.liveStatus = 'idle',
   });
 
   bool get isBusy => isThinking || isStreaming || isListening;
@@ -38,6 +42,8 @@ class VoiceChatState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     bool? autoPlayTts,
+    bool? isLiveMode,
+    String? liveStatus,
   }) {
     return VoiceChatState(
       messages: messages ?? this.messages,
@@ -49,6 +55,8 @@ class VoiceChatState extends Equatable {
       speakingMessageId: clearSpeakingId ? null : (speakingMessageId ?? this.speakingMessageId),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       autoPlayTts: autoPlayTts ?? this.autoPlayTts,
+      isLiveMode: isLiveMode ?? this.isLiveMode,
+      liveStatus: liveStatus ?? this.liveStatus,
     );
   }
 
@@ -63,5 +71,7 @@ class VoiceChatState extends Equatable {
         speakingMessageId,
         errorMessage,
         autoPlayTts,
+        isLiveMode,
+        liveStatus,
       ];
 }

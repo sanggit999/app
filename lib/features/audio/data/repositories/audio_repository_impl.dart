@@ -13,10 +13,22 @@ class AudioRepositoryImpl implements AudioRepository {
   });
 
   @override
-  Future<void> speak(String text, {required String locale, double rate = 0.5}) async {
+  Future<void> speak(
+    String text, {
+    required String locale,
+    double rate = 0.5,
+    double pitch = 1.0,
+    String voiceGender = 'female',
+  }) async {
     // When bot starts speaking, ensure microphone isn't capturing bot's audio
     await sttService.stopListening();
-    await ttsService.speak(text: text, locale: locale, rate: rate);
+    await ttsService.speak(
+      text: text,
+      locale: locale,
+      rate: rate,
+      pitch: pitch,
+      voiceGender: voiceGender,
+    );
   }
 
   @override

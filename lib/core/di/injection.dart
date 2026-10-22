@@ -91,6 +91,7 @@ Future<void> initDependencies() async {
     () => SettingsCubit(
       sharedPreferences: sl<SharedPreferences>(),
       llmService: sl<LlmService>(),
+      audioRepository: sl<AudioRepository>(),
     ),
   );
 }

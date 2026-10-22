@@ -15,6 +15,13 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
   StreamSubscription<double>? _soundLevelSubscription;
   StreamSubscription<bool>? _speakingSubscription;
   StreamSubscription<String>? _llmStreamSubscription;
+  Timer? _silenceTimer;
+  String? _currentSttLocale;
+  String? _currentTtsLocale;
+  String? _currentSystemPrompt;
+  String? _currentModel;
+  String? _currentVoiceGender;
+  double? _currentSpeechRate;
 
   VoiceChatCubit({
     required this.sendMessageStreamUseCase,
@@ -28,17 +35,22 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     _speakingSubscription = audioRepository.isSpeakingStream.listen((isSpeaking) {
       if (!isSpeaking && state.speakingMessageId != null) {
         emit(state.copyWith(clearSpeakingId: true));
+        if (state.isLiveMode) {
+          _triggerNextLiveTurn();
+        }
       }
     });
   }
 
   Future<void> startListening({required String locale}) async {
+    _currentSttLocale = locale;
     await stopAudio();
     emit(state.copyWith(
       isListening: true,
       partialRecognizedText: '',
       soundLevel: 0.0,
       clearError: true,
+      liveStatus: state.isLiveMode ? 'listening' : state.liveStatus,
     ));
 
     try {
@@ -52,6 +64,9 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       _sttTextSubscription = stream.listen(
         (recognized) {
           emit(state.copyWith(partialRecognizedText: recognized));
+          if (state.isLiveMode && recognized.trim().isNotEmpty) {
+            _resetSilenceTimer();
+          }
         },
         onError: (err) {
           emit(state.copyWith(
@@ -72,7 +87,10 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     required String systemPrompt,
     required String ttsLocale,
     String? model,
+    String voiceGender = 'female',
+    double speechRate = 0.5,
   }) async {
+    _silenceTimer?.cancel();
     await _sttTextSubscription?.cancel();
     await _soundLevelSubscription?.cancel();
     await audioRepository.stopListening();
@@ -82,6 +100,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       isListening: false,
       soundLevel: 0.0,
       partialRecognizedText: '',
+      liveStatus: state.isLiveMode ? 'thinking' : state.liveStatus,
     ));
 
     if (text.isNotEmpty) {
@@ -90,7 +109,11 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
         systemPrompt: systemPrompt,
         ttsLocale: ttsLocale,
         model: model,
+        voiceGender: _currentVoiceGender ?? voiceGender,
+        speechRate: _currentSpeechRate ?? speechRate,
       );
+    } else if (state.isLiveMode) {
+      _triggerNextLiveTurn();
     }
   }
 
@@ -105,14 +128,33 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     ));
   }
 
+  Future<String> stopListeningOnly() async {
+    _silenceTimer?.cancel();
+    await _sttTextSubscription?.cancel();
+    await _soundLevelSubscription?.cancel();
+    await audioRepository.stopListening();
+    final text = state.partialRecognizedText.trim();
+    emit(state.copyWith(
+      isListening: false,
+      soundLevel: 0.0,
+      partialRecognizedText: '',
+      liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
+    ));
+    return text;
+  }
+
   Future<void> sendMessage({
     required String content,
     required String systemPrompt,
     required String ttsLocale,
     String? model,
+    String voiceGender = 'female',
+    double speechRate = 0.5,
   }) async {
     if (content.trim().isEmpty) return;
 
+    _currentVoiceGender = voiceGender;
+    _currentSpeechRate = speechRate;
     await stopAudio();
 
     final userMessage = ChatMessage(
@@ -184,11 +226,18 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
             isStreaming: false,
           ));
 
-          if (state.autoPlayTts && accumulatedReply.isNotEmpty) {
+          if ((state.autoPlayTts || state.isLiveMode) && accumulatedReply.isNotEmpty) {
+            if (state.isLiveMode) {
+              emit(state.copyWith(liveStatus: 'speaking'));
+            }
             await playMessageAudio(
               currentMessages[index],
               locale: ttsLocale,
+              voiceGender: _currentVoiceGender ?? voiceGender,
+              rate: _currentSpeechRate ?? speechRate,
             );
+          } else if (state.isLiveMode) {
+            _triggerNextLiveTurn();
           }
         },
         onError: (err) {
@@ -208,10 +257,20 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     }
   }
 
-  Future<void> playMessageAudio(ChatMessage message, {required String locale}) async {
+  Future<void> playMessageAudio(
+    ChatMessage message, {
+    required String locale,
+    String voiceGender = 'female',
+    double rate = 0.5,
+  }) async {
     try {
       emit(state.copyWith(speakingMessageId: message.id));
-      await audioRepository.speak(message.content, locale: locale);
+      await audioRepository.speak(
+        message.content,
+        locale: locale,
+        rate: rate,
+        voiceGender: voiceGender,
+      );
     } catch (e) {
       emit(state.copyWith(
         clearSpeakingId: true,
@@ -242,8 +301,80 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     emit(state.copyWith(autoPlayTts: !state.autoPlayTts));
   }
 
+  Future<void> startLiveMode({
+    required String systemPrompt,
+    required String ttsLocale,
+    required String sttLocale,
+    String? model,
+    String voiceGender = 'female',
+    double speechRate = 0.5,
+  }) async {
+    _currentSystemPrompt =
+        '$systemPrompt\n'
+        'Mode: Real-time Spoken Call. Keep replies short (1-2 sentences), highly conversational, and warm. '
+        'Do not use markdown, emojis, or bullet points in your speech.';
+    _currentTtsLocale = ttsLocale;
+    _currentSttLocale = sttLocale;
+    _currentModel = model;
+    _currentVoiceGender = voiceGender;
+    _currentSpeechRate = speechRate;
+
+    await stopAudio();
+    emit(state.copyWith(
+      isLiveMode: true,
+      liveStatus: 'listening',
+      clearError: true,
+    ));
+
+    await startListening(locale: sttLocale);
+  }
+
+  Future<void> stopLiveMode() async {
+    _silenceTimer?.cancel();
+    await stopAudio();
+    await cancelListening();
+    emit(state.copyWith(
+      isLiveMode: false,
+      liveStatus: 'idle',
+      soundLevel: 0.0,
+      partialRecognizedText: '',
+    ));
+  }
+
+  Future<void> bargeIn() async {
+    if (!state.isLiveMode) return;
+    await stopAudio();
+    emit(state.copyWith(liveStatus: 'listening'));
+    await startListening(locale: _currentSttLocale ?? 'en-US');
+  }
+
+  static const Duration _liveSilenceDebounce = Duration(milliseconds: 1700);
+  static const Duration _liveNextTurnDelay = Duration(milliseconds: 400);
+
+  void _resetSilenceTimer() {
+    _silenceTimer?.cancel();
+    _silenceTimer = Timer(_liveSilenceDebounce, () {
+      if (state.isLiveMode && state.partialRecognizedText.trim().isNotEmpty) {
+        stopListeningAndSend(
+          systemPrompt: _currentSystemPrompt ?? 'Be a helpful language coach',
+          ttsLocale: _currentTtsLocale ?? 'en-US',
+          model: _currentModel,
+        );
+      }
+    });
+  }
+
+  Future<void> _triggerNextLiveTurn() async {
+    if (!state.isLiveMode) return;
+    await Future.delayed(_liveNextTurnDelay);
+    if (!state.isLiveMode) return;
+    emit(state.copyWith(liveStatus: 'listening'));
+    await startListening(locale: _currentSttLocale ?? 'en-US');
+  }
+
   void clearChat() {
     stopAudio();
+    _silenceTimer?.cancel();
     _llmStreamSubscription?.cancel();
     emit(state.copyWith(
       messages: [],
@@ -257,10 +388,13 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
 
   @override
   Future<void> close() {
+    _silenceTimer?.cancel();
     _sttTextSubscription?.cancel();
     _soundLevelSubscription?.cancel();
     _speakingSubscription?.cancel();
     _llmStreamSubscription?.cancel();
+    audioRepository.stopSpeaking();
+    audioRepository.stopListening();
     return super.close();
   }
 }

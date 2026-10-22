@@ -37,11 +37,19 @@ void main() {
           text: any(named: 'text'),
           locale: any(named: 'locale'),
           rate: any(named: 'rate'),
+          pitch: any(named: 'pitch'),
+          voiceGender: any(named: 'voiceGender'),
         )).thenAnswer((_) async {});
 
     await repo.speak('Hello world', locale: 'en-US');
 
     verify(() => mockStt.stopListening()).called(1);
-    verify(() => mockTts.speak(text: 'Hello world', locale: 'en-US', rate: 0.5)).called(1);
+    verify(() => mockTts.speak(
+          text: 'Hello world',
+          locale: 'en-US',
+          rate: 0.5,
+          pitch: 1.0,
+          voiceGender: 'female',
+        )).called(1);
   });
 }

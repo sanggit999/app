@@ -13,6 +13,7 @@ class MessengerInputBar extends StatefulWidget {
   final VoidCallback onStartListening;
   final VoidCallback onStopListeningAndSend;
   final VoidCallback onCancelListening;
+  final VoidCallback? onStopListeningOnly;
   final ValueChanged<String> onSendMessage;
   final VoidCallback? onTapInput;
   final VoidCallback? onTogglePromptChips;
@@ -29,6 +30,7 @@ class MessengerInputBar extends StatefulWidget {
     required this.onStartListening,
     required this.onStopListeningAndSend,
     required this.onCancelListening,
+    this.onStopListeningOnly,
     required this.onSendMessage,
     this.onTapInput,
     this.onTogglePromptChips,
@@ -321,6 +323,16 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
           ),
 
           const SizedBox(width: 8),
+
+          if (widget.onStopListeningOnly != null && widget.partialRecognizedText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 4.0),
+              child: IconButton(
+                tooltip: 'Giữ chữ để sửa',
+                icon: const Icon(Icons.edit_note_rounded, color: AppColors.secondary, size: 26),
+                onPressed: widget.onStopListeningOnly,
+              ),
+            ),
 
           // Stop and Send voice button
           Container(

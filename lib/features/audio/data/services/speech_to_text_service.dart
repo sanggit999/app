@@ -12,17 +12,25 @@ class SpeechToTextService implements SttService {
   SpeechToTextService({stt.SpeechToText? sttInstance})
       : speechToText = sttInstance ?? stt.SpeechToText();
 
+  bool _isInitialized = false;
+
   @override
   Future<bool> initialize() async {
-    final available = await speechToText.initialize(
-      onError: (val) {
-        _isListeningController.add(false);
-      },
-      onStatus: (val) {
-        _isListeningController.add(val == 'listening');
-      },
-    );
-    return available;
+    try {
+      final available = await speechToText.initialize(
+        onError: (val) {
+          _isListeningController.add(false);
+        },
+        onStatus: (val) {
+          _isListeningController.add(val == 'listening');
+        },
+      );
+      _isInitialized = available;
+      return available;
+    } catch (e) {
+      _isInitialized = false;
+      return false;
+    }
   }
 
   @override
@@ -30,26 +38,47 @@ class SpeechToTextService implements SttService {
     _textStreamController?.close();
     _textStreamController = StreamController<String>.broadcast();
 
-    speechToText.listen(
-      onResult: (result) {
-        if (!_textStreamController!.isClosed) {
-          _textStreamController!.add(result.recognizedWords);
-        }
-      },
-      onSoundLevelChange: (level) {
-        _soundLevelController.add(level);
-      },
-      listenOptions: stt.SpeechListenOptions(
-        localeId: locale,
-        cancelOnError: true,
-        listenMode: stt.ListenMode.dictation,
-      ),
-    ).catchError((err) {
-      throw AudioException(message: 'Failed to start microphone: $err');
-    });
+    _safeListen(locale);
 
-    _isListeningController.add(true);
     return _textStreamController!.stream;
+  }
+
+  Future<void> _safeListen(String locale) async {
+    try {
+      if (!_isInitialized || !speechToText.isAvailable) {
+        final ready = await initialize();
+        if (!ready) {
+          _isListeningController.add(false);
+          _textStreamController?.addError(
+            const AudioException(message: 'Microphone permission not granted or unavailable'),
+          );
+          return;
+        }
+      }
+
+      await speechToText.listen(
+        onResult: (result) {
+          if (_textStreamController != null && !_textStreamController!.isClosed) {
+            _textStreamController!.add(result.recognizedWords);
+          }
+        },
+        onSoundLevelChange: (level) {
+          _soundLevelController.add(level);
+        },
+        listenOptions: stt.SpeechListenOptions(
+          localeId: locale,
+          cancelOnError: true,
+          listenMode: stt.ListenMode.dictation,
+        ),
+      );
+
+      _isListeningController.add(true);
+    } catch (err) {
+      _isListeningController.add(false);
+      if (_textStreamController != null && !_textStreamController!.isClosed) {
+        _textStreamController!.addError(AudioException(message: 'Failed to start microphone: $err'));
+      }
+    }
   }
 
   @override

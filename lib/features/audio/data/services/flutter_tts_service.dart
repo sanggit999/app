@@ -37,11 +37,45 @@ class FlutterTtsService implements TtsService {
     required String locale,
     double rate = 0.5,
     double pitch = 1.0,
+    String voiceGender = 'female',
   }) async {
     await flutterTts.stop();
     await flutterTts.setLanguage(locale);
     await flutterTts.setSpeechRate(rate);
-    await flutterTts.setPitch(pitch);
+
+    final bool isMale = voiceGender.toLowerCase() == 'male';
+    final double adjustedPitch = isMale ? 0.85 : 1.15;
+    await flutterTts.setPitch(pitch == 1.0 ? adjustedPitch : pitch);
+
+    try {
+      final voices = await flutterTts.getVoices;
+      if (voices is List && voices.isNotEmpty) {
+        final langPrefix = locale.split(RegExp(r'[-_]')).first.toLowerCase();
+        final targetKeyword = isMale ? 'male' : 'female';
+
+        Map<String, String>? selectedVoice;
+        for (final v in voices) {
+          if (v is Map) {
+            final vLocale = (v['locale'] ?? '').toString().toLowerCase();
+            final vName = (v['name'] ?? '').toString().toLowerCase();
+            if (vLocale.contains(langPrefix) && vName.contains(targetKeyword)) {
+              selectedVoice = {
+                'name': v['name'].toString(),
+                'locale': v['locale']?.toString() ?? locale,
+              };
+              break;
+            }
+          }
+        }
+
+        if (selectedVoice != null) {
+          await flutterTts.setVoice(selectedVoice);
+        }
+      }
+    } catch (_) {
+      // Graceful fallback to pitch modulation
+    }
+
     await flutterTts.speak(text);
   }
 

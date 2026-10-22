@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:echo_lingua/core/di/injection.dart';
 import 'package:echo_lingua/core/theme/app_colors.dart';
 import 'package:echo_lingua/core/theme/app_typography.dart';
-import 'package:echo_lingua/features/audio/domain/repositories/audio_repository.dart';
 import 'package:echo_lingua/features/language/data/language_registry.dart';
 import 'package:echo_lingua/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:echo_lingua/features/settings/presentation/cubit/settings_state.dart';
@@ -224,21 +222,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Giọng Đọc & Phát Âm (TTS)', style: AppTypography.heading3),
-                IconButton(
-                  tooltip: 'Nghe thử giọng mẫu',
-                  icon: const Icon(Icons.volume_up_rounded, color: AppColors.secondary),
-                  onPressed: () {
-                    sl<AudioRepository>().speak(
-                      'Hello! I am your AI English tutor. Nice to meet you!',
-                      locale: state.currentLanguage.ttsLocale,
-                      rate: state.speechRate,
-                    );
-                  },
+                Expanded(
+                  child: Text(
+                    'Giọng Đọc & Phát Âm (TTS)',
+                    style: AppTypography.heading3,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () => cubit.testVoicePlayback(),
+                  icon: const Icon(Icons.volume_up_rounded, size: 16),
+                  label: const Text('Nghe thử'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.secondary.withValues(alpha: 0.15),
+                    foregroundColor: AppColors.secondary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 14),
+
+            Text(
+              'Chọn Giới tính Giọng đọc (AI Voice):',
+              style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildGenderChoice(
+                    context,
+                    title: 'Giọng Nữ',
+                    subtitle: 'Trong trẻo, tự nhiên',
+                    emoji: '👩',
+                    isSelected: state.voiceGender == 'female',
+                    onTap: () => cubit.updateVoiceGender('female'),
+                    isDark: isDark,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildGenderChoice(
+                    context,
+                    title: 'Giọng Nam',
+                    subtitle: 'Trầm ấm, đĩnh đạc',
+                    emoji: '👨',
+                    isSelected: state.voiceGender == 'male',
+                    onTap: () => cubit.updateVoiceGender('male'),
+                    isDark: isDark,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
             Text(
               'Tốc độ đọc: ${state.speechRate.toStringAsFixed(1)}x (${state.speechRate < 0.5 ? "Chậm" : state.speechRate == 0.5 ? "Chuẩn" : "Nhanh"})',
               style: AppTypography.bodyMedium,
@@ -251,6 +293,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
               activeColor: AppColors.primary,
               onChanged: (val) => cubit.updateSpeechRate(val),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderChoice(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String emoji,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    final borderColor = isSelected
+        ? AppColors.primary
+        : (isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder);
+    final bgColor = isSelected
+        ? AppColors.primary.withValues(alpha: 0.12)
+        : (isDark ? AppColors.darkCard : Colors.white);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? AppColors.primary : null,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 18),
           ],
         ),
       ),

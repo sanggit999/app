@@ -4,6 +4,7 @@ abstract class TtsService {
     required String locale,
     double rate = 0.5,
     double pitch = 1.0,
+    String voiceGender = 'female',
   });
 
   Future<void> stop();

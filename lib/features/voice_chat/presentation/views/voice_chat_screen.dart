@@ -8,6 +8,7 @@ import 'package:echo_lingua/features/voice_chat/presentation/cubit/voice_chat_cu
 import 'package:echo_lingua/features/voice_chat/presentation/cubit/voice_chat_state.dart';
 import 'package:echo_lingua/features/voice_chat/presentation/widgets/chat_message_bubble.dart';
 import 'package:echo_lingua/features/voice_chat/presentation/widgets/messenger_input_bar.dart';
+import 'package:echo_lingua/features/voice_chat/presentation/widgets/live_voice_call_modal.dart';
 
 class VoiceChatScreen extends StatefulWidget {
   const VoiceChatScreen({super.key});
@@ -73,6 +74,12 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
         if (state.messages.isNotEmpty) {
           _scrollToBottom();
         }
+        if (!state.isLiveMode && state.isListening && state.partialRecognizedText.isNotEmpty) {
+          _textController.text = state.partialRecognizedText;
+          _textController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _textController.text.length),
+          );
+        }
         if (state.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -119,6 +126,54 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
               ],
             ),
             actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                child: InkWell(
+                  onTap: () {
+                    LiveVoiceCallModal.show(
+                      context,
+                      languageName: currentProfile.name,
+                      flagEmoji: currentProfile.flagEmoji,
+                      systemPrompt: currentProfile.defaultSystemPrompt,
+                      ttsLocale: currentProfile.ttsLocale,
+                      sttLocale: currentProfile.sttLocale,
+                      voiceGender: settings.voiceGender,
+                      speechRate: settings.speechRate,
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.secondary],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Live',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               IconButton(
                 tooltip: state.autoPlayTts ? 'Tắt tự động phát âm' : 'Bật tự động phát âm',
                 icon: Icon(
@@ -162,7 +217,15 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 // Chat Messages or Empty Welcome View
                 Expanded(
                   child: state.messages.isEmpty
-                      ? _buildWelcomeHero(context, cubit, currentProfile.defaultSystemPrompt, currentProfile.ttsLocale)
+                      ? _buildWelcomeHero(
+                          context,
+                          cubit,
+                          currentProfile.defaultSystemPrompt,
+                          currentProfile.ttsLocale,
+                          currentProfile.sttLocale,
+                          currentProfile.name,
+                          currentProfile.flagEmoji,
+                        )
                       : ListView.builder(
                           controller: _scrollController,
                           reverse: true,
@@ -180,7 +243,12 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                                 if (state.speakingMessageId == msg.id) {
                                   cubit.stopAudio();
                                 } else {
-                                  cubit.playMessageAudio(msg, locale: currentProfile.ttsLocale);
+                                  cubit.playMessageAudio(
+                                    msg,
+                                    locale: currentProfile.ttsLocale,
+                                    voiceGender: settings.voiceGender,
+                                    rate: settings.speechRate,
+                                  );
                                 }
                               },
                               onTranslate: () {
@@ -227,6 +295,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                   currentProfile.defaultSystemPrompt,
                   currentProfile.ttsLocale,
                   currentProfile.sttLocale,
+                  settings.voiceGender,
+                  settings.speechRate,
                 ),
               ],
             ),
@@ -241,6 +311,9 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     VoiceChatCubit cubit,
     String systemPrompt,
     String ttsLocale,
+    String sttLocale,
+    String languageName,
+    String flagEmoji,
   ) {
     return Center(
       child: SingleChildScrollView(
@@ -267,7 +340,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 ],
               ),
               child: const Icon(
-                Icons.record_voice_over_rounded,
+                 Icons.record_voice_over_rounded,
                 color: Colors.white,
                 size: 40,
               ),
@@ -285,6 +358,38 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 color: AppColors.darkTextSecondary,
               ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: () {
+                final settings = context.read<SettingsCubit>().state;
+                LiveVoiceCallModal.show(
+                  context,
+                  languageName: languageName,
+                  flagEmoji: flagEmoji,
+                  systemPrompt: systemPrompt,
+                  ttsLocale: ttsLocale,
+                  sttLocale: sttLocale,
+                  voiceGender: settings.voiceGender,
+                  speechRate: settings.speechRate,
+                );
+              },
+              icon: const Icon(Icons.graphic_eq_rounded, size: 20),
+              label: Text(
+                'Bắt đầu Trò chuyện Live Voice',
+                style: AppTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                elevation: 4,
+                shadowColor: AppColors.primary.withValues(alpha: 0.4),
+              ),
             ),
             const SizedBox(height: 24),
             Wrap(
@@ -399,6 +504,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     String systemPrompt,
     String ttsLocale,
     String sttLocale,
+    String voiceGender,
+    double speechRate,
   ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -419,23 +526,40 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             });
           },
           onStartListening: () {
+            _textController.clear();
             cubit.startListening(locale: sttLocale);
           },
           onStopListeningAndSend: () {
+            _textController.clear();
             cubit.stopListeningAndSend(
               systemPrompt: systemPrompt,
               ttsLocale: ttsLocale,
+              voiceGender: voiceGender,
+              speechRate: speechRate,
             );
             _scrollToBottom();
           },
+          onStopListeningOnly: () async {
+            final recognized = await cubit.stopListeningOnly();
+            if (recognized.isNotEmpty) {
+              _textController.text = recognized;
+              _textController.selection = TextSelection.fromPosition(
+                TextPosition(offset: recognized.length),
+              );
+            }
+            _focusNode.requestFocus();
+          },
           onCancelListening: () {
             cubit.cancelListening();
+            _textController.clear();
           },
           onSendMessage: (text) {
             cubit.sendMessage(
               content: text,
               systemPrompt: systemPrompt,
               ttsLocale: ttsLocale,
+              voiceGender: voiceGender,
+              speechRate: speechRate,
             );
             _scrollToBottom();
           },

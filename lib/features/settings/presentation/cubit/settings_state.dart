@@ -8,6 +8,7 @@ class SettingsState extends Equatable {
   final String ollamaBaseUrl;
   final String modelName;
   final double speechRate;
+  final String voiceGender;
   final LanguageProfile currentLanguage;
   final ConnectionStatus connectionStatus;
   final String? connectionError;
@@ -16,6 +17,7 @@ class SettingsState extends Equatable {
     this.ollamaBaseUrl = 'http://127.0.0.1:11434',
     this.modelName = 'qwen2.5:3b',
     this.speechRate = 0.5,
+    this.voiceGender = 'female',
     this.currentLanguage = LanguageRegistry.english,
     this.connectionStatus = ConnectionStatus.unknown,
     this.connectionError,
@@ -25,6 +27,7 @@ class SettingsState extends Equatable {
     String? ollamaBaseUrl,
     String? modelName,
     double? speechRate,
+    String? voiceGender,
     LanguageProfile? currentLanguage,
     ConnectionStatus? connectionStatus,
     String? connectionError,
@@ -34,6 +37,7 @@ class SettingsState extends Equatable {
       ollamaBaseUrl: ollamaBaseUrl ?? this.ollamaBaseUrl,
       modelName: modelName ?? this.modelName,
       speechRate: speechRate ?? this.speechRate,
+      voiceGender: voiceGender ?? this.voiceGender,
       currentLanguage: currentLanguage ?? this.currentLanguage,
       connectionStatus: connectionStatus ?? this.connectionStatus,
       connectionError: clearConnectionError
@@ -47,6 +51,7 @@ class SettingsState extends Equatable {
         ollamaBaseUrl,
         modelName,
         speechRate,
+        voiceGender,
         currentLanguage,
         connectionStatus,
         connectionError,
