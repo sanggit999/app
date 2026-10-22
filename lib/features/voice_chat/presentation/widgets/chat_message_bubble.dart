@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:echo_lingua/core/theme/app_colors.dart';
 import 'package:echo_lingua/core/theme/app_typography.dart';
 import 'package:echo_lingua/features/voice_chat/domain/entities/chat_message.dart';
+
 import 'audio_play_button.dart';
 
 class ChatMessageBubble extends StatelessWidget {
@@ -26,8 +27,9 @@ class ChatMessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
@@ -56,15 +58,21 @@ class ChatMessageBubble extends StatelessWidget {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: isUser
                         ? AppColors.primary
-                        : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                        : (isDark
+                              ? AppColors.darkSurface
+                              : AppColors.lightSurface),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
@@ -97,8 +105,8 @@ class ChatMessageBubble extends StatelessWidget {
                           color: isUser
                               ? Colors.white
                               : (isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.lightTextPrimary),
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.lightTextPrimary),
                         ),
                       ),
                       if (message.translatedText != null) ...[
@@ -157,10 +165,11 @@ class ChatMessageBubble extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: (isDark
-                                    ? AppColors.darkSurface
-                                    : AppColors.lightCardBorder)
-                                .withValues(alpha: 0.5),
+                            color:
+                                (isDark
+                                        ? AppColors.darkSurface
+                                        : AppColors.lightCardBorder)
+                                    .withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(

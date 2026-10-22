@@ -52,7 +52,9 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
   });
 
-  testWidgets('morphs Mic button into Send button when user types text', (tester) async {
+  testWidgets('morphs Mic button into Send button when user types text', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
 
     await tester.enterText(find.byType(TextField), 'Hello world');
@@ -62,13 +64,13 @@ void main() {
     expect(find.byKey(const ValueKey('mic_button')), findsNothing);
   });
 
-  testWidgets('tapping Send button invokes onSendMessage and clears input', (tester) async {
+  testWidgets('tapping Send button invokes onSendMessage and clears input', (
+    tester,
+  ) async {
     String? sentMessage;
 
     await tester.pumpWidget(
-      buildTestWidget(
-        onSend: (msg) => sentMessage = msg,
-      ),
+      buildTestWidget(onSend: (msg) => sentMessage = msg),
     );
 
     await tester.enterText(find.byType(TextField), 'How are you?');
@@ -82,31 +84,34 @@ void main() {
     expect(find.byKey(const ValueKey('mic_button')), findsOneWidget);
   });
 
-  testWidgets('renders recording bar with cancel and send voice in listening mode', (tester) async {
-    bool cancelClicked = false;
-    bool stopAndSendClicked = false;
+  testWidgets(
+    'renders recording bar with cancel and send voice in listening mode',
+    (tester) async {
+      bool cancelClicked = false;
+      bool stopAndSendClicked = false;
 
-    await tester.pumpWidget(
-      buildTestWidget(
-        isListening: true,
-        partialText: 'Speaking english',
-        onCancelListen: () => cancelClicked = true,
-        onStopListenAndSend: () => stopAndSendClicked = true,
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        buildTestWidget(
+          isListening: true,
+          partialText: 'Speaking english',
+          onCancelListen: () => cancelClicked = true,
+          onStopListenAndSend: () => stopAndSendClicked = true,
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('recording_bar')), findsOneWidget);
-    expect(find.text('Speaking english'), findsOneWidget);
+      expect(find.byKey(const ValueKey('recording_bar')), findsOneWidget);
+      expect(find.text('Speaking english'), findsOneWidget);
 
-    // Tap cancel
-    await tester.tap(find.byIcon(Icons.close_rounded));
-    await tester.pump();
-    expect(cancelClicked, isTrue);
+      // Tap cancel
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pump();
+      expect(cancelClicked, isTrue);
 
-    // Tap send voice
-    await tester.tap(find.byTooltip('Xong & Gửi'));
-    await tester.pump();
-    expect(stopAndSendClicked, isTrue);
-  });
+      // Tap send voice
+      await tester.tap(find.byTooltip('Xong & Gửi'));
+      await tester.pump();
+      expect(stopAndSendClicked, isTrue);
+    },
+  );
 }

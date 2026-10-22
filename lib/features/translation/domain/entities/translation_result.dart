@@ -21,12 +21,12 @@ class TranslationResult extends Equatable {
 
   @override
   List<Object?> get props => [
-        originalText,
-        translatedText,
-        phonetic,
-        partOfSpeech,
-        explanation,
-        examples,
-        synonyms,
-      ];
+    originalText,
+    translatedText,
+    phonetic,
+    partOfSpeech,
+    explanation,
+    examples,
+    synonyms,
+  ];
 }

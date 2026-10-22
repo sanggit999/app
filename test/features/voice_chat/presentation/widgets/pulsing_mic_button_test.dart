@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:echo_lingua/features/voice_chat/presentation/widgets/pulsing_mic_button.dart';
 
 void main() {
-  testWidgets('PulsingMicButton renders and triggers onPressed on tap', (tester) async {
+  testWidgets('PulsingMicButton renders and triggers onPressed on tap', (
+    tester,
+  ) async {
     bool tapped = false;
 
     await tester.pumpWidget(
@@ -29,7 +31,9 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('PulsingMicButton displays mic recording icon when listening', (tester) async {
+  testWidgets('PulsingMicButton displays mic recording icon when listening', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

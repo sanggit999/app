@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
@@ -26,33 +27,47 @@ void main() {
     );
   });
 
-  test('streamChat correctly decodes chunked streaming responses from Ollama', () async {
-    final streamResponse = http.StreamedResponse(
-      Stream.fromIterable([
-        utf8.encode('{"message":{"role":"assistant","content":"Xin"},"done":false}\n'),
-        utf8.encode('{"message":{"role":"assistant","content":" chào"},"done":false}\n'),
-        utf8.encode('{"message":{"role":"assistant","content":" bạn!"},"done":true}\n'),
-      ]),
-      200,
-    );
+  test(
+    'streamChat correctly decodes chunked streaming responses from Ollama',
+    () async {
+      final streamResponse = http.StreamedResponse(
+        Stream.fromIterable([
+          utf8.encode(
+            '{"message":{"role":"assistant","content":"Xin"},"done":false}\n',
+          ),
+          utf8.encode(
+            '{"message":{"role":"assistant","content":" chào"},"done":false}\n',
+          ),
+          utf8.encode(
+            '{"message":{"role":"assistant","content":" bạn!"},"done":true}\n',
+          ),
+        ]),
+        200,
+      );
 
-    when(() => mockClient.send(any())).thenAnswer((_) async => streamResponse);
+      when(() => mockClient.send(any()))
+          .thenAnswer((_) async => streamResponse);
 
-    final result = await service.streamChat(
-      messages: [
-        {'role': 'user', 'content': 'Chào'}
-      ],
-    ).toList();
+      final result = await service
+          .streamChat(
+            messages: [
+              {'role': 'user', 'content': 'Chào'},
+            ],
+          )
+          .toList();
 
-    expect(result, equals(['Xin', ' chào', ' bạn!']));
-  });
+      expect(result, equals(['Xin', ' chào', ' bạn!']));
+    },
+  );
 
   test('generate returns parsed response on 200 OK', () async {
-    when(() => mockClient.post(
-          any(),
-          headers: any(named: 'headers'),
-          body: any(named: 'body'),
-        )).thenAnswer(
+    when(
+      () => mockClient.post(
+        any(),
+        headers: any(named: 'headers'),
+        body: any(named: 'body'),
+      ),
+    ).thenAnswer(
       (_) async => http.Response('{"response": "Hello world"}', 200),
     );
 
@@ -61,9 +76,8 @@ void main() {
   });
 
   test('checkHealth returns true when api/tags returns 200', () async {
-    when(() => mockClient.get(any())).thenAnswer(
-      (_) async => http.Response('{"models": []}', 200),
-    );
+    when(() => mockClient.get(any()))
+        .thenAnswer((_) async => http.Response('{"models": []}', 200));
 
     final isHealthy = await service.checkHealth();
     expect(isHealthy, isTrue);

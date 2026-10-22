@@ -21,12 +21,12 @@ class LanguageProfile extends Equatable {
 
   @override
   List<Object?> get props => [
-        code,
-        name,
-        nativeName,
-        flagEmoji,
-        ttsLocale,
-        sttLocale,
-        defaultSystemPrompt,
-      ];
+    code,
+    name,
+    nativeName,
+    flagEmoji,
+    ttsLocale,
+    sttLocale,
+    defaultSystemPrompt,
+  ];
 }

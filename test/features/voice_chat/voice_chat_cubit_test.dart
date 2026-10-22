@@ -6,8 +6,11 @@ import 'package:echo_lingua/features/voice_chat/domain/repositories/voice_chat_r
 import 'package:echo_lingua/features/voice_chat/domain/usecases/send_message_stream_usecase.dart';
 import 'package:echo_lingua/features/voice_chat/presentation/cubit/voice_chat_cubit.dart';
 
-class MockSendMessageStreamUseCase extends Mock implements SendMessageStreamUseCase {}
+class MockSendMessageStreamUseCase extends Mock
+    implements SendMessageStreamUseCase {}
+
 class MockAudioRepository extends Mock implements AudioRepository {}
+
 class MockVoiceChatRepository extends Mock implements VoiceChatRepository {}
 
 void main() {
@@ -21,8 +24,10 @@ void main() {
     mockAudioRepo = MockAudioRepository();
     mockVoiceChatRepo = MockVoiceChatRepository();
 
-    when(() => mockAudioRepo.isSpeakingStream).thenAnswer((_) => const Stream.empty());
-    when(() => mockAudioRepo.soundLevelStream).thenAnswer((_) => const Stream.empty());
+    when(() => mockAudioRepo.isSpeakingStream)
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockAudioRepo.soundLevelStream)
+        .thenAnswer((_) => const Stream.empty());
     when(() => mockAudioRepo.stopSpeaking()).thenAnswer((_) async {});
     when(() => mockAudioRepo.stopListening()).thenAnswer((_) async {});
     when(() => mockAudioRepo.startListening(locale: any(named: 'locale')))
@@ -45,34 +50,41 @@ void main() {
     expect(cubit.state.isListening, isFalse);
   });
 
-  test('sendMessage appends user message and placeholder assistant message', () async {
-    when(() => mockSendUseCase(
+  test(
+    'sendMessage appends user message and placeholder assistant message',
+    () async {
+      when(
+        () => mockSendUseCase(
           history: any(named: 'history'),
           systemPrompt: any(named: 'systemPrompt'),
-        )).thenAnswer((_) => Stream.fromIterable(['Hello', '!']));
+        ),
+      ).thenAnswer((_) => Stream.fromIterable(['Hello', '!']));
 
-    when(() => mockAudioRepo.speak(
+      when(
+        () => mockAudioRepo.speak(
           any(),
           locale: any(named: 'locale'),
           rate: any(named: 'rate'),
           voiceGender: any(named: 'voiceGender'),
-        )).thenAnswer((_) async {});
+        ),
+      ).thenAnswer((_) async {});
 
-    await cubit.sendMessage(
-      content: 'Hi teacher',
-      systemPrompt: 'Be a tutor',
-      ttsLocale: 'en-US',
-    );
+      await cubit.sendMessage(
+        content: 'Hi teacher',
+        systemPrompt: 'Be a tutor',
+        ttsLocale: 'en-US',
+      );
 
-    // Wait a brief microtask for stream completion
-    await Future.delayed(const Duration(milliseconds: 50));
+      // Wait a brief microtask for stream completion
+      await Future.delayed(const Duration(milliseconds: 50));
 
-    expect(cubit.state.messages.length, equals(2));
-    expect(cubit.state.messages[0].isUser, isTrue);
-    expect(cubit.state.messages[0].content, equals('Hi teacher'));
-    expect(cubit.state.messages[1].isUser, isFalse);
-    expect(cubit.state.messages[1].content, equals('Hello!'));
-  });
+      expect(cubit.state.messages.length, equals(2));
+      expect(cubit.state.messages[0].isUser, isTrue);
+      expect(cubit.state.messages[0].content, equals('Hi teacher'));
+      expect(cubit.state.messages[1].isUser, isFalse);
+      expect(cubit.state.messages[1].content, equals('Hello!'));
+    },
+  );
 
   test('toggleAutoPlayTts toggles state flag', () {
     expect(cubit.state.autoPlayTts, isFalse);
@@ -121,49 +133,59 @@ void main() {
     verify(() => mockAudioRepo.startListening(locale: 'en_US')).called(2);
   });
 
-  test('stopListeningOnly returns recognized text and ends listening state', () async {
-    when(() => mockAudioRepo.startListening(locale: any(named: 'locale')))
-        .thenAnswer((_) => Stream.value('Recognized voice draft'));
+  test(
+    'stopListeningOnly returns recognized text and ends listening state',
+    () async {
+      when(() => mockAudioRepo.startListening(locale: any(named: 'locale')))
+          .thenAnswer((_) => Stream.value('Recognized voice draft'));
 
-    await cubit.startListening(locale: 'en_US');
-    // Allow stream to emit
-    await Future.delayed(const Duration(milliseconds: 10));
+      await cubit.startListening(locale: 'en_US');
+      // Allow stream to emit
+      await Future.delayed(const Duration(milliseconds: 10));
 
-    final text = await cubit.stopListeningOnly();
-    expect(text, equals('Recognized voice draft'));
-    expect(cubit.state.isListening, isFalse);
-    expect(cubit.state.partialRecognizedText, isEmpty);
-  });
+      final text = await cubit.stopListeningOnly();
+      expect(text, equals('Recognized voice draft'));
+      expect(cubit.state.isListening, isFalse);
+      expect(cubit.state.partialRecognizedText, isEmpty);
+    },
+  );
 
-  test('playMessageAudio passes voiceGender and rate to audioRepository', () async {
-    when(() => mockAudioRepo.speak(
+  test(
+    'playMessageAudio passes voiceGender and rate to audioRepository',
+    () async {
+      when(
+        () => mockAudioRepo.speak(
           any(),
           locale: any(named: 'locale'),
           rate: any(named: 'rate'),
           voiceGender: any(named: 'voiceGender'),
-        )).thenAnswer((_) async {});
+        ),
+      ).thenAnswer((_) async {});
 
-    final msg = cubit.state.messages.isNotEmpty
-        ? cubit.state.messages.first
-        : ChatMessage(
-            id: 'test_msg',
-            content: 'Audio test',
-            isUser: false,
-            timestamp: DateTime.now(),
-          );
+      final msg = cubit.state.messages.isNotEmpty
+          ? cubit.state.messages.first
+          : ChatMessage(
+              id: 'test_msg',
+              content: 'Audio test',
+              isUser: false,
+              timestamp: DateTime.now(),
+            );
 
-    await cubit.playMessageAudio(
-      msg,
-      locale: 'en-US',
-      voiceGender: 'male',
-      rate: 0.7,
-    );
+      await cubit.playMessageAudio(
+        msg,
+        locale: 'en-US',
+        voiceGender: 'male',
+        rate: 0.7,
+      );
 
-    verify(() => mockAudioRepo.speak(
+      verify(
+        () => mockAudioRepo.speak(
           'Audio test',
           locale: 'en-US',
           rate: 0.7,
           voiceGender: 'male',
-        )).called(1);
-  });
+        ),
+      ).called(1);
+    },
+  );
 }

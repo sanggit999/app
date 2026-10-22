@@ -74,7 +74,9 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
         if (state.messages.isNotEmpty) {
           _scrollToBottom();
         }
-        if (!state.isLiveMode && state.isListening && state.partialRecognizedText.isNotEmpty) {
+        if (!state.isLiveMode &&
+            state.isListening &&
+            state.partialRecognizedText.isNotEmpty) {
           _textController.text = state.partialRecognizedText;
           _textController.selection = TextSelection.fromPosition(
             TextPosition(offset: _textController.text.length),
@@ -127,7 +129,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             ),
             actions: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 4,
+                ),
                 child: InkWell(
                   onTap: () {
                     LiveVoiceCallModal.show(
@@ -143,7 +148,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [AppColors.primary, AppColors.secondary],
@@ -160,7 +168,11 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 16),
+                        const Icon(
+                          Icons.graphic_eq_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Live',
@@ -175,17 +187,25 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 ),
               ),
               IconButton(
-                tooltip: state.autoPlayTts ? 'Tắt tự động phát âm' : 'Bật tự động phát âm',
+                tooltip: state.autoPlayTts
+                    ? 'Tắt tự động phát âm'
+                    : 'Bật tự động phát âm',
                 icon: Icon(
-                  state.autoPlayTts ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-                  color: state.autoPlayTts ? AppColors.secondary : AppColors.darkTextMuted,
+                  state.autoPlayTts
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_off_rounded,
+                  color: state.autoPlayTts
+                      ? AppColors.secondary
+                      : AppColors.darkTextMuted,
                 ),
                 onPressed: () => cubit.toggleAutoPlayTts(),
               ),
               IconButton(
                 tooltip: 'Xóa hội thoại',
                 icon: const Icon(Icons.delete_outline_rounded),
-                onPressed: state.messages.isEmpty ? null : () => cubit.clearChat(),
+                onPressed: state.messages.isEmpty
+                    ? null
+                    : () => cubit.clearChat(),
               ),
             ],
           ),
@@ -199,15 +219,24 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                   Container(
                     width: double.infinity,
                     color: AppColors.error.withValues(alpha: 0.15),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 18),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.error,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Chưa kết nối Local LLM. Kiểm tra Ollama tại mục Cài đặt.',
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.error,
+                            ),
                           ),
                         ),
                       ],
@@ -235,7 +264,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                           itemCount: state.messages.length,
                           itemBuilder: (context, index) {
                             // Reverse indexing: index 0 is at bottom (latest message)
-                            final msg = state.messages[state.messages.length - 1 - index];
+                            final msg = state
+                                .messages[state.messages.length - 1 - index];
                             return ChatMessageBubble(
                               message: msg,
                               isPlayingAudio: state.speakingMessageId == msg.id,
@@ -252,7 +282,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                                 }
                               },
                               onTranslate: () {
-                                cubit.translateMessage(msg.id, targetLang: 'Vietnamese');
+                                cubit.translateMessage(
+                                  msg.id,
+                                  targetLang: 'Vietnamese',
+                                );
                               },
                             );
                           },
@@ -262,7 +295,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 // Thinking Indicator
                 if (state.isThinking)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     color: Theme.of(context).cardColor.withValues(alpha: 0.6),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -340,7 +376,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                 ],
               ),
               child: const Icon(
-                 Icons.record_voice_over_rounded,
+                Icons.record_voice_over_rounded,
                 color: Colors.white,
                 size: 40,
               ),
@@ -385,8 +421,13 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
                 elevation: 4,
                 shadowColor: AppColors.primary.withValues(alpha: 0.4),
               ),
@@ -476,9 +517,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
               ),
             ),
             backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-            side: BorderSide(
-              color: AppColors.primary.withValues(alpha: 0.2),
-            ),
+            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),

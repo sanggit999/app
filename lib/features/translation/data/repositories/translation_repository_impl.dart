@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:echo_lingua/core/errors/exceptions.dart';
 import 'package:echo_lingua/features/llm/domain/services/llm_service.dart';
 import 'package:echo_lingua/features/translation/domain/entities/translation_result.dart';
@@ -15,7 +16,8 @@ class TranslationRepositoryImpl implements TranslationRepository {
     required String sourceLang,
     required String targetLang,
   }) async {
-    final systemPrompt = '''
+    final systemPrompt =
+        '''
 You are an expert bilingual translator, phonetician and language tutor.
 Translate the input text from $sourceLang to $targetLang accurately.
 You MUST output ONLY a valid JSON object without markdown wrapper or other commentary, in this exact format:
@@ -54,12 +56,14 @@ You MUST output ONLY a valid JSON object without markdown wrapper or other comme
 
       final Map<String, dynamic> map = jsonDecode(jsonStr);
 
-      final List<String> examples = (map['examples'] as List<dynamic>?)
+      final List<String> examples =
+          (map['examples'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
 
-      final List<String> synonyms = (map['synonyms'] as List<dynamic>?)
+      final List<String> synonyms =
+          (map['synonyms'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];

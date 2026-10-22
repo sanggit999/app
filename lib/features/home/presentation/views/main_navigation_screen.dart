@@ -27,10 +27,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
@@ -44,12 +41,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 _currentIndex = index;
               });
             },
-            backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+            backgroundColor: isDark
+                ? AppColors.darkSurface
+                : AppColors.lightSurface,
             indicatorColor: AppColors.primary.withValues(alpha: 0.18),
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.record_voice_over_outlined),
-                selectedIcon: Icon(Icons.record_voice_over, color: AppColors.primary),
+                selectedIcon: Icon(
+                  Icons.record_voice_over,
+                  color: AppColors.primary,
+                ),
                 label: 'Luyện Nói',
               ),
               NavigationDestination(

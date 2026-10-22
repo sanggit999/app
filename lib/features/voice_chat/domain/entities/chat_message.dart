@@ -42,13 +42,13 @@ class ChatMessage extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        content,
-        isUser,
-        timestamp,
-        isStreaming,
-        isPlayingAudio,
-        pronunciationNotes,
-        translatedText,
-      ];
+    id,
+    content,
+    isUser,
+    timestamp,
+    isStreaming,
+    isPlayingAudio,
+    pronunciationNotes,
+    translatedText,
+  ];
 }

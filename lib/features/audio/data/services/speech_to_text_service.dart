@@ -1,16 +1,20 @@
 import 'dart:async';
+
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:echo_lingua/core/errors/exceptions.dart';
+
 import '../../domain/services/stt_service.dart';
 
 class SpeechToTextService implements SttService {
   final stt.SpeechToText speechToText;
-  final StreamController<double> _soundLevelController = StreamController<double>.broadcast();
-  final StreamController<bool> _isListeningController = StreamController<bool>.broadcast();
+  final StreamController<double> _soundLevelController =
+      StreamController<double>.broadcast();
+  final StreamController<bool> _isListeningController =
+      StreamController<bool>.broadcast();
   StreamController<String>? _textStreamController;
 
   SpeechToTextService({stt.SpeechToText? sttInstance})
-      : speechToText = sttInstance ?? stt.SpeechToText();
+    : speechToText = sttInstance ?? stt.SpeechToText();
 
   bool _isInitialized = false;
 
@@ -50,7 +54,9 @@ class SpeechToTextService implements SttService {
         if (!ready) {
           _isListeningController.add(false);
           _textStreamController?.addError(
-            const AudioException(message: 'Microphone permission not granted or unavailable'),
+            const AudioException(
+              message: 'Microphone permission not granted or unavailable',
+            ),
           );
           return;
         }
@@ -58,7 +64,8 @@ class SpeechToTextService implements SttService {
 
       await speechToText.listen(
         onResult: (result) {
-          if (_textStreamController != null && !_textStreamController!.isClosed) {
+          if (_textStreamController != null &&
+              !_textStreamController!.isClosed) {
             _textStreamController!.add(result.recognizedWords);
           }
         },
@@ -76,7 +83,9 @@ class SpeechToTextService implements SttService {
     } catch (err) {
       _isListeningController.add(false);
       if (_textStreamController != null && !_textStreamController!.isClosed) {
-        _textStreamController!.addError(AudioException(message: 'Failed to start microphone: $err'));
+        _textStreamController!.addError(
+          AudioException(message: 'Failed to start microphone: $err'),
+        );
       }
     }
   }

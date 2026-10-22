@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
 import 'features/audio/domain/services/stt_service.dart';
@@ -26,22 +28,17 @@ class EchoLinguaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<SettingsCubit>(
-          create: (_) => sl<SettingsCubit>(),
-        ),
-        BlocProvider<VoiceChatCubit>(
-          create: (_) => sl<VoiceChatCubit>(),
-        ),
-        BlocProvider<TranslationCubit>(
-          create: (_) => sl<TranslationCubit>(),
-        ),
+        BlocProvider<SettingsCubit>(create: (_) => sl<SettingsCubit>()),
+        BlocProvider<VoiceChatCubit>(create: (_) => sl<VoiceChatCubit>()),
+        BlocProvider<TranslationCubit>(create: (_) => sl<TranslationCubit>()),
       ],
       child: MaterialApp(
         title: 'EchoLingua AI',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark, // Senior aesthetic: Sleek Slate Dark mode by default
+        themeMode: ThemeMode
+            .dark, // Senior aesthetic: Sleek Slate Dark mode by default
         home: const MainNavigationScreen(),
       ),
     );

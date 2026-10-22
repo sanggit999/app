@@ -11,7 +11,9 @@ import 'package:echo_lingua/features/translation/presentation/cubit/translation_
 import 'package:echo_lingua/features/translation/presentation/cubit/translation_state.dart';
 
 class MockSettingsCubit extends Mock implements SettingsCubit {}
+
 class MockVoiceChatCubit extends Mock implements VoiceChatCubit {}
+
 class MockTranslationCubit extends Mock implements TranslationCubit {}
 
 void main() {
@@ -27,16 +29,22 @@ void main() {
     mockTranslationCubit = MockTranslationCubit();
 
     when(() => mockSettingsCubit.state).thenReturn(const SettingsState());
-    when(() => mockSettingsCubit.stream).thenAnswer((_) => const Stream.empty());
+    when(() => mockSettingsCubit.stream)
+        .thenAnswer((_) => const Stream.empty());
 
     when(() => mockVoiceChatCubit.state).thenReturn(const VoiceChatState());
-    when(() => mockVoiceChatCubit.stream).thenAnswer((_) => const Stream.empty());
+    when(() => mockVoiceChatCubit.stream)
+        .thenAnswer((_) => const Stream.empty());
 
-    when(() => mockTranslationCubit.state).thenReturn(const TranslationInitial());
-    when(() => mockTranslationCubit.stream).thenAnswer((_) => const Stream.empty());
+    when(() => mockTranslationCubit.state)
+        .thenReturn(const TranslationInitial());
+    when(() => mockTranslationCubit.stream)
+        .thenAnswer((_) => const Stream.empty());
   });
 
-  testWidgets('MainNavigationScreen displays 3 navigation destinations', (tester) async {
+  testWidgets('MainNavigationScreen displays 3 navigation destinations', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MultiBlocProvider(
         providers: [
@@ -44,9 +52,7 @@ void main() {
           BlocProvider<VoiceChatCubit>.value(value: mockVoiceChatCubit),
           BlocProvider<TranslationCubit>.value(value: mockTranslationCubit),
         ],
-        child: const MaterialApp(
-          home: MainNavigationScreen(),
-        ),
+        child: const MaterialApp(home: MainNavigationScreen()),
       ),
     );
 
@@ -55,30 +61,31 @@ void main() {
     expect(find.text('Cài Đặt'), findsOneWidget);
   });
 
-  testWidgets('MainNavigationScreen collapses bottom navigation bar when keyboard is open', (tester) async {
-    // Simulate keyboard open by setting viewInsets
-    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+  testWidgets(
+    'MainNavigationScreen collapses bottom navigation bar when keyboard is open',
+    (tester) async {
+      // Simulate keyboard open by setting viewInsets
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
 
-    await tester.pumpWidget(
-      MultiBlocProvider(
-        providers: [
-          BlocProvider<SettingsCubit>.value(value: mockSettingsCubit),
-          BlocProvider<VoiceChatCubit>.value(value: mockVoiceChatCubit),
-          BlocProvider<TranslationCubit>.value(value: mockTranslationCubit),
-        ],
-        child: const MaterialApp(
-          home: MainNavigationScreen(),
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<SettingsCubit>.value(value: mockSettingsCubit),
+            BlocProvider<VoiceChatCubit>.value(value: mockVoiceChatCubit),
+            BlocProvider<TranslationCubit>.value(value: mockTranslationCubit),
+          ],
+          child: const MaterialApp(home: MainNavigationScreen()),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final animatedContainer = tester.widget<AnimatedContainer>(
-      find.byType(AnimatedContainer),
-    );
-    expect(animatedContainer.constraints?.maxHeight, 0.0);
+      final animatedContainer = tester.widget<AnimatedContainer>(
+        find.byType(AnimatedContainer),
+      );
+      expect(animatedContainer.constraints?.maxHeight, 0.0);
 
-    // Reset view
-    tester.view.resetViewInsets();
-  });
+      // Reset view
+      tester.view.resetViewInsets();
+    },
+  );
 }

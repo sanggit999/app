@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:echo_lingua/core/theme/app_colors.dart';
 import 'package:echo_lingua/core/theme/app_typography.dart';
+
 import 'audio_wave_visualizer.dart';
 
 class MessengerInputBar extends StatefulWidget {
@@ -112,7 +113,11 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
     );
   }
 
-  Widget _buildStandardInputBar(BuildContext context, bool isDark, Color pillBg) {
+  Widget _buildStandardInputBar(
+    BuildContext context,
+    bool isDark,
+    Color pillBg,
+  ) {
     return Row(
       key: const ValueKey('standard_input_bar'),
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -126,7 +131,9 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
                 : Icons.lightbulb_outline_rounded,
             color: widget.arePromptChipsVisible
                 ? AppColors.accent
-                : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                : (isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary),
           ),
           onPressed: widget.onTogglePromptChips,
         ),
@@ -141,7 +148,9 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
               border: Border.all(
                 color: widget.focusNode.hasFocus
                     ? AppColors.primary
-                    : (isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder),
+                    : (isDark
+                          ? AppColors.darkCardBorder
+                          : AppColors.lightCardBorder),
                 width: widget.focusNode.hasFocus ? 1.5 : 1.0,
               ),
             ),
@@ -162,7 +171,9 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
                     decoration: InputDecoration(
                       hintText: 'Nhắn tin bằng tiếng Anh...',
                       hintStyle: AppTypography.bodyMedium.copyWith(
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.lightTextMuted,
                       ),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
@@ -171,7 +182,10 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
                       disabledBorder: InputBorder.none,
                       filled: false,
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 11.0,
+                      ),
                     ),
                   ),
                 ),
@@ -184,7 +198,9 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
                       tooltip: 'Xóa chữ',
                       icon: Icon(
                         Icons.cancel_rounded,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.lightTextMuted,
                       ),
                       onPressed: () {
                         widget.controller.clear();
@@ -204,9 +220,7 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
           duration: const Duration(milliseconds: 220),
           transitionBuilder: (child, animation) =>
               ScaleTransition(scale: animation, child: child),
-          child: _hasText
-              ? _buildSendButton()
-              : _buildMicButton(isDark),
+          child: _hasText ? _buildSendButton() : _buildMicButton(isDark),
         ),
       ],
     );
@@ -233,7 +247,11 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
         ],
       ),
       child: IconButton(
-        icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
+        icon: const Icon(
+          Icons.arrow_upward_rounded,
+          color: Colors.white,
+          size: 22,
+        ),
         tooltip: 'Gửi tin nhắn',
         onPressed: _submit,
       ),
@@ -267,7 +285,11 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
           // Cancel recording button
           IconButton(
             tooltip: 'Hủy ghi âm',
-            icon: const Icon(Icons.close_rounded, color: AppColors.error, size: 24),
+            icon: const Icon(
+              Icons.close_rounded,
+              color: AppColors.error,
+              size: 24,
+            ),
             onPressed: widget.onCancelListening,
           ),
 
@@ -324,12 +346,17 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
 
           const SizedBox(width: 8),
 
-          if (widget.onStopListeningOnly != null && widget.partialRecognizedText.isNotEmpty)
+          if (widget.onStopListeningOnly != null &&
+              widget.partialRecognizedText.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 4.0),
               child: IconButton(
                 tooltip: 'Giữ chữ để sửa',
-                icon: const Icon(Icons.edit_note_rounded, color: AppColors.secondary, size: 26),
+                icon: const Icon(
+                  Icons.edit_note_rounded,
+                  color: AppColors.secondary,
+                  size: 26,
+                ),
                 onPressed: widget.onStopListeningOnly,
               ),
             ),
@@ -350,7 +377,11 @@ class _MessengerInputBarState extends State<MessengerInputBar> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.check_rounded, color: Colors.white, size: 24),
+              icon: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
               tooltip: 'Xong & Gửi',
               onPressed: widget.onStopListeningAndSend,
             ),

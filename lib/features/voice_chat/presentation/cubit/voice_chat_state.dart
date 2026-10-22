@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+
 import '../../domain/entities/chat_message.dart';
 
 class VoiceChatState extends Equatable {
@@ -49,10 +50,13 @@ class VoiceChatState extends Equatable {
       messages: messages ?? this.messages,
       isListening: isListening ?? this.isListening,
       soundLevel: soundLevel ?? this.soundLevel,
-      partialRecognizedText: partialRecognizedText ?? this.partialRecognizedText,
+      partialRecognizedText:
+          partialRecognizedText ?? this.partialRecognizedText,
       isThinking: isThinking ?? this.isThinking,
       isStreaming: isStreaming ?? this.isStreaming,
-      speakingMessageId: clearSpeakingId ? null : (speakingMessageId ?? this.speakingMessageId),
+      speakingMessageId: clearSpeakingId
+          ? null
+          : (speakingMessageId ?? this.speakingMessageId),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       autoPlayTts: autoPlayTts ?? this.autoPlayTts,
       isLiveMode: isLiveMode ?? this.isLiveMode,
@@ -62,16 +66,16 @@ class VoiceChatState extends Equatable {
 
   @override
   List<Object?> get props => [
-        messages,
-        isListening,
-        soundLevel,
-        partialRecognizedText,
-        isThinking,
-        isStreaming,
-        speakingMessageId,
-        errorMessage,
-        autoPlayTts,
-        isLiveMode,
-        liveStatus,
-      ];
+    messages,
+    isListening,
+    soundLevel,
+    partialRecognizedText,
+    isThinking,
+    isStreaming,
+    speakingMessageId,
+    errorMessage,
+    autoPlayTts,
+    isLiveMode,
+    liveStatus,
+  ];
 }

@@ -1,10 +1,13 @@
 import 'dart:async';
+
 import 'package:flutter_tts/flutter_tts.dart';
+
 import '../../domain/services/tts_service.dart';
 
 class FlutterTtsService implements TtsService {
   final FlutterTts flutterTts;
-  final StreamController<bool> _isPlayingController = StreamController<bool>.broadcast();
+  final StreamController<bool> _isPlayingController =
+      StreamController<bool>.broadcast();
 
   FlutterTtsService({FlutterTts? tts}) : flutterTts = tts ?? FlutterTts() {
     _initHandlers();

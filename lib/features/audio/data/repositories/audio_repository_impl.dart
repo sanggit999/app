@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import '../../domain/repositories/audio_repository.dart';
 import '../../domain/services/stt_service.dart';
 import '../../domain/services/tts_service.dart';
@@ -7,10 +8,7 @@ class AudioRepositoryImpl implements AudioRepository {
   final TtsService ttsService;
   final SttService sttService;
 
-  AudioRepositoryImpl({
-    required this.ttsService,
-    required this.sttService,
-  });
+  AudioRepositoryImpl({required this.ttsService, required this.sttService});
 
   @override
   Future<void> speak(

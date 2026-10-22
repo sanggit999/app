@@ -9,7 +9,13 @@ void main() {
     expect(AppColors.primary, isNotNull);
     expect(AppTheme.darkTheme.primaryColor, equals(AppColors.primary));
     expect(AppTheme.lightTheme.primaryColor, equals(AppColors.primary));
-    expect(AppTheme.darkTheme.scaffoldBackgroundColor, equals(AppColors.darkBackground));
-    expect(AppTheme.lightTheme.scaffoldBackgroundColor, equals(AppColors.lightBackground));
+    expect(
+      AppTheme.darkTheme.scaffoldBackgroundColor,
+      equals(AppColors.darkBackground),
+    );
+    expect(
+      AppTheme.lightTheme.scaffoldBackgroundColor,
+      equals(AppColors.lightBackground),
+    );
   });
 }

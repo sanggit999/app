@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+
 import '../../domain/entities/translation_result.dart';
 
 abstract class TranslationState extends Equatable {

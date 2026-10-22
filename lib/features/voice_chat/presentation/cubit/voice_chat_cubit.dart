@@ -1,9 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:echo_lingua/features/audio/domain/repositories/audio_repository.dart';
 import 'package:echo_lingua/features/voice_chat/domain/entities/chat_message.dart';
 import 'package:echo_lingua/features/voice_chat/domain/repositories/voice_chat_repository.dart';
 import 'package:echo_lingua/features/voice_chat/domain/usecases/send_message_stream_usecase.dart';
+
 import 'voice_chat_state.dart';
 
 class VoiceChatCubit extends Cubit<VoiceChatState> {
@@ -32,7 +34,9 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
   }
 
   void _initAudioListeners() {
-    _speakingSubscription = audioRepository.isSpeakingStream.listen((isSpeaking) {
+    _speakingSubscription = audioRepository.isSpeakingStream.listen((
+      isSpeaking,
+    ) {
       if (!isSpeaking && state.speakingMessageId != null) {
         emit(state.copyWith(clearSpeakingId: true));
         if (state.isLiveMode) {
@@ -45,17 +49,21 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
   Future<void> startListening({required String locale}) async {
     _currentSttLocale = locale;
     await stopAudio();
-    emit(state.copyWith(
-      isListening: true,
-      partialRecognizedText: '',
-      soundLevel: 0.0,
-      clearError: true,
-      liveStatus: state.isLiveMode ? 'listening' : state.liveStatus,
-    ));
+    emit(
+      state.copyWith(
+        isListening: true,
+        partialRecognizedText: '',
+        soundLevel: 0.0,
+        clearError: true,
+        liveStatus: state.isLiveMode ? 'listening' : state.liveStatus,
+      ),
+    );
 
     try {
       _soundLevelSubscription?.cancel();
-      _soundLevelSubscription = audioRepository.soundLevelStream.listen((level) {
+      _soundLevelSubscription = audioRepository.soundLevelStream.listen((
+        level,
+      ) {
         emit(state.copyWith(soundLevel: level));
       });
 
@@ -69,17 +77,21 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
           }
         },
         onError: (err) {
-          emit(state.copyWith(
-            isListening: false,
-            errorMessage: 'Microphone error: $err',
-          ));
+          emit(
+            state.copyWith(
+              isListening: false,
+              errorMessage: 'Microphone error: $err',
+            ),
+          );
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        isListening: false,
-        errorMessage: 'Could not access microphone: $e',
-      ));
+      emit(
+        state.copyWith(
+          isListening: false,
+          errorMessage: 'Could not access microphone: $e',
+        ),
+      );
     }
   }
 
@@ -96,12 +108,14 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     await audioRepository.stopListening();
 
     final text = state.partialRecognizedText.trim();
-    emit(state.copyWith(
-      isListening: false,
-      soundLevel: 0.0,
-      partialRecognizedText: '',
-      liveStatus: state.isLiveMode ? 'thinking' : state.liveStatus,
-    ));
+    emit(
+      state.copyWith(
+        isListening: false,
+        soundLevel: 0.0,
+        partialRecognizedText: '',
+        liveStatus: state.isLiveMode ? 'thinking' : state.liveStatus,
+      ),
+    );
 
     if (text.isNotEmpty) {
       await sendMessage(
@@ -121,11 +135,13 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     await _sttTextSubscription?.cancel();
     await _soundLevelSubscription?.cancel();
     await audioRepository.stopListening();
-    emit(state.copyWith(
-      isListening: false,
-      soundLevel: 0.0,
-      partialRecognizedText: '',
-    ));
+    emit(
+      state.copyWith(
+        isListening: false,
+        soundLevel: 0.0,
+        partialRecognizedText: '',
+      ),
+    );
   }
 
   Future<String> stopListeningOnly() async {
@@ -134,12 +150,14 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     await _soundLevelSubscription?.cancel();
     await audioRepository.stopListening();
     final text = state.partialRecognizedText.trim();
-    emit(state.copyWith(
-      isListening: false,
-      soundLevel: 0.0,
-      partialRecognizedText: '',
-      liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
-    ));
+    emit(
+      state.copyWith(
+        isListening: false,
+        soundLevel: 0.0,
+        partialRecognizedText: '',
+        liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
+      ),
+    );
     return text;
   }
 
@@ -177,12 +195,14 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       ..add(userMessage)
       ..add(placeholderAssistant);
 
-    emit(state.copyWith(
-      messages: updatedMessages,
-      isThinking: true,
-      isStreaming: true,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        messages: updatedMessages,
+        isThinking: true,
+        isStreaming: true,
+        clearError: true,
+      ),
+    );
 
     final StringBuffer accumulatedReply = StringBuffer();
 
@@ -199,34 +219,38 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
           accumulatedReply.write(chunk);
 
           final currentMessages = List<ChatMessage>.from(state.messages);
-          final index = currentMessages.indexWhere((m) => m.id == assistantMsgId);
+          final index = currentMessages.indexWhere(
+            (m) => m.id == assistantMsgId,
+          );
           if (index != -1) {
             currentMessages[index] = currentMessages[index].copyWith(
               content: accumulatedReply.toString(),
               isStreaming: true,
             );
-            emit(state.copyWith(
-              messages: currentMessages,
-              isThinking: false,
-            ));
+            emit(state.copyWith(messages: currentMessages, isThinking: false));
           }
         },
         onDone: () async {
           final currentMessages = List<ChatMessage>.from(state.messages);
-          final index = currentMessages.indexWhere((m) => m.id == assistantMsgId);
+          final index = currentMessages.indexWhere(
+            (m) => m.id == assistantMsgId,
+          );
           if (index != -1) {
             currentMessages[index] = currentMessages[index].copyWith(
               isStreaming: false,
             );
           }
 
-          emit(state.copyWith(
-            messages: currentMessages,
-            isThinking: false,
-            isStreaming: false,
-          ));
+          emit(
+            state.copyWith(
+              messages: currentMessages,
+              isThinking: false,
+              isStreaming: false,
+            ),
+          );
 
-          if ((state.autoPlayTts || state.isLiveMode) && accumulatedReply.isNotEmpty) {
+          if ((state.autoPlayTts || state.isLiveMode) &&
+              accumulatedReply.isNotEmpty) {
             if (state.isLiveMode) {
               emit(state.copyWith(liveStatus: 'speaking'));
             }
@@ -241,19 +265,23 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
           }
         },
         onError: (err) {
-          emit(state.copyWith(
-            isThinking: false,
-            isStreaming: false,
-            errorMessage: 'Local LLM connection error: $err',
-          ));
+          emit(
+            state.copyWith(
+              isThinking: false,
+              isStreaming: false,
+              errorMessage: 'Local LLM connection error: $err',
+            ),
+          );
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        isThinking: false,
-        isStreaming: false,
-        errorMessage: 'Failed to process message: $e',
-      ));
+      emit(
+        state.copyWith(
+          isThinking: false,
+          isStreaming: false,
+          errorMessage: 'Failed to process message: $e',
+        ),
+      );
     }
   }
 
@@ -272,10 +300,12 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
         voiceGender: voiceGender,
       );
     } catch (e) {
-      emit(state.copyWith(
-        clearSpeakingId: true,
-        errorMessage: 'TTS playback error: $e',
-      ));
+      emit(
+        state.copyWith(
+          clearSpeakingId: true,
+          errorMessage: 'TTS playback error: $e',
+        ),
+      );
     }
   }
 
@@ -284,13 +314,19 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     emit(state.copyWith(clearSpeakingId: true));
   }
 
-  Future<void> translateMessage(String messageId, {required String targetLang}) async {
+  Future<void> translateMessage(
+    String messageId, {
+    required String targetLang,
+  }) async {
     final index = state.messages.indexWhere((m) => m.id == messageId);
     if (index == -1) return;
 
     try {
       final msg = state.messages[index];
-      final translated = await voiceChatRepository.translateMessage(msg.content, targetLang);
+      final translated = await voiceChatRepository.translateMessage(
+        msg.content,
+        targetLang,
+      );
       final currentList = List<ChatMessage>.from(state.messages);
       currentList[index] = msg.copyWith(translatedText: translated.trim());
       emit(state.copyWith(messages: currentList));
@@ -320,11 +356,13 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     _currentSpeechRate = speechRate;
 
     await stopAudio();
-    emit(state.copyWith(
-      isLiveMode: true,
-      liveStatus: 'listening',
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        isLiveMode: true,
+        liveStatus: 'listening',
+        clearError: true,
+      ),
+    );
 
     await startListening(locale: sttLocale);
   }
@@ -333,12 +371,14 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     _silenceTimer?.cancel();
     await stopAudio();
     await cancelListening();
-    emit(state.copyWith(
-      isLiveMode: false,
-      liveStatus: 'idle',
-      soundLevel: 0.0,
-      partialRecognizedText: '',
-    ));
+    emit(
+      state.copyWith(
+        isLiveMode: false,
+        liveStatus: 'idle',
+        soundLevel: 0.0,
+        partialRecognizedText: '',
+      ),
+    );
   }
 
   Future<void> bargeIn() async {
@@ -376,14 +416,16 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     stopAudio();
     _silenceTimer?.cancel();
     _llmStreamSubscription?.cancel();
-    emit(state.copyWith(
-      messages: [],
-      isThinking: false,
-      isStreaming: false,
-      isListening: false,
-      clearSpeakingId: true,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        messages: [],
+        isThinking: false,
+        isStreaming: false,
+        isListening: false,
+        clearSpeakingId: true,
+        clearError: true,
+      ),
+    );
   }
 
   @override

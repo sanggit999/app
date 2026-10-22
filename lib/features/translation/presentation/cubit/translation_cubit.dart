@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../domain/usecases/translate_text_usecase.dart';
 import 'translation_state.dart';
 
@@ -6,7 +7,7 @@ class TranslationCubit extends Cubit<TranslationState> {
   final TranslateTextUseCase translateUseCase;
 
   TranslationCubit({required this.translateUseCase})
-      : super(const TranslationInitial());
+    : super(const TranslationInitial());
 
   Future<void> translate({
     required String text,
@@ -26,11 +27,13 @@ class TranslationCubit extends Cubit<TranslationState> {
         sourceLang: sourceLang,
         targetLang: targetLang,
       );
-      emit(TranslationSuccess(
-        result: result,
-        sourceLang: sourceLang,
-        targetLang: targetLang,
-      ));
+      emit(
+        TranslationSuccess(
+          result: result,
+          sourceLang: sourceLang,
+          targetLang: targetLang,
+        ),
+      );
     } catch (e) {
       emit(TranslationError(message: e.toString()));
     }

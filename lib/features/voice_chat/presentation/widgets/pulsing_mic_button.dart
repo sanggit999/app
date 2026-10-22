@@ -110,10 +110,11 @@ class _PulsingMicButtonState extends State<PulsingMicButton>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (widget.isListening
-                                ? AppColors.micRecording
-                                : AppColors.primary)
-                            .withValues(alpha: 0.45),
+                        color:
+                            (widget.isListening
+                                    ? AppColors.micRecording
+                                    : AppColors.primary)
+                                .withValues(alpha: 0.45),
                         blurRadius: 18,
                         spreadRadius: 2,
                         offset: const Offset(0, 4),

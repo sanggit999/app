@@ -50,7 +50,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('Cấu hình Local LLM & Voice', style: AppTypography.heading2),
+            title: Text(
+              'Cấu hình Local LLM & Voice',
+              style: AppTypography.heading2,
+            ),
           ),
           body: ListView(
             padding: const EdgeInsets.all(16.0),
@@ -90,24 +93,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String statusText;
     IconData statusIcon;
 
-    switch (state.connectionStatus) {
-      case ConnectionStatus.connected:
+    if (state.isOnDevice) {
+      if (state.isModelDownloaded) {
         statusColor = AppColors.success;
-        statusText = 'Đã kết nối thành công với Local LLM';
+        statusText = 'On-Device AI: Sẵn sàng Offline 100%';
         statusIcon = Icons.check_circle_rounded;
-        break;
-      case ConnectionStatus.checking:
+      } else {
         statusColor = AppColors.accent;
-        statusText = 'Đang kiểm tra kết nối...';
-        statusIcon = Icons.sync_rounded;
-        break;
-      case ConnectionStatus.failed:
-      default:
-        statusColor = AppColors.error;
-        statusText = 'Chưa kết nối. Hãy khởi động Ollama trên máy.';
-        statusIcon = Icons.error_outline_rounded;
-        break;
+        statusText = 'On-Device AI: Chưa tải model (~350MB)';
+        statusIcon = Icons.cloud_download_rounded;
+      }
+    } else {
+      switch (state.connectionStatus) {
+        case ConnectionStatus.connected:
+          statusColor = AppColors.success;
+          statusText = 'Đã kết nối thành công với Local Ollama';
+          statusIcon = Icons.check_circle_rounded;
+          break;
+        case ConnectionStatus.checking:
+          statusColor = AppColors.accent;
+          statusText = 'Đang kiểm tra kết nối Ollama...';
+          statusIcon = Icons.sync_rounded;
+          break;
+        case ConnectionStatus.failed:
+        default:
+          statusColor = AppColors.error;
+          statusText = 'Chưa kết nối. Hãy kiểm tra Ollama Host.';
+          statusIcon = Icons.error_outline_rounded;
+          break;
+      }
     }
+
+    final subtitleText = state.isOnDevice
+        ? (state.isModelDownloaded
+              ? 'Mô hình: Qwen 2.5 0.5B Instruct • Tiết kiệm RAM'
+              : 'Nhấn Tải Model bên dưới để sử dụng không cần mạng')
+        : state.ollamaBaseUrl;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -129,9 +150,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: AppTypography.label.copyWith(color: statusColor),
                 ),
                 Text(
-                  state.ollamaBaseUrl,
+                  subtitleText,
                   style: AppTypography.bodySmall.copyWith(
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary,
                   ),
                 ),
               ],
@@ -159,37 +182,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Mô hình Local AI (Ollama)', style: AppTypography.heading3),
+            Text('Chế độ hoạt động LLM', style: AppTypography.heading3),
             const SizedBox(height: 12),
-            TextField(
-              controller: _urlController,
-              decoration: const InputDecoration(
-                labelText: 'Địa chỉ Host Ollama URL',
-                hintText: 'http://127.0.0.1:11434',
-                prefixIcon: Icon(Icons.link_rounded),
+
+            // Execution Mode Switcher
+            Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
               ),
-              onSubmitted: (val) => cubit.updateBaseUrl(val),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _modelController,
-              decoration: const InputDecoration(
-                labelText: 'Tên Model',
-                hintText: 'qwen2.5:3b',
-                prefixIcon: Icon(Icons.memory_rounded),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildModeTab(
+                      title: '📱 On-Device (Offline)',
+                      subtitle: 'Không cần mạng • ~350MB',
+                      isSelected: state.isOnDevice,
+                      onTap: () => cubit.updateExecutionMode('on_device'),
+                      isDark: isDark,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: _buildModeTab(
+                      title: '🖥️ Ollama (Local Host)',
+                      subtitle: 'Qua Wifi / Mạng nội bộ',
+                      isSelected: !state.isOnDevice,
+                      onTap: () => cubit.updateExecutionMode('ollama'),
+                      isDark: isDark,
+                    ),
+                  ),
+                ],
               ),
-              onSubmitted: (val) => cubit.updateModel(val),
             ),
-            const SizedBox(height: 10),
-            Text('Model gợi ý tối ưu:', style: AppTypography.bodySmall),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: [
-                _buildQuickModelChip('qwen2.5:3b', 'Tối ưu Tiếng Việt ⭐', cubit),
-                _buildQuickModelChip('qwen2.5:1.5b', 'Siêu nhẹ', cubit),
-                _buildQuickModelChip('llama3.2:3b', 'Luyện nói tiếng Anh', cubit),
-              ],
+            const SizedBox(height: 16),
+
+            if (state.isOnDevice)
+              _buildOnDeviceSettings(context, state, cubit, isDark)
+            else
+              _buildOllamaSettings(context, state, cubit, isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeTab({
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? AppColors.darkSurface : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+          border: isSelected
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
+              : null,
+        ),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: AppTypography.bodySmall.copyWith(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? AppColors.primary : null,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: AppTypography.bodySmall.copyWith(
+                fontSize: 10,
+                color: isDark
+                    ? AppColors.darkTextMuted
+                    : AppColors.lightTextMuted,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -197,7 +287,210 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildQuickModelChip(String model, String subtitle, SettingsCubit cubit) {
+  Widget _buildOnDeviceSettings(
+    BuildContext context,
+    SettingsState state,
+    SettingsCubit cubit,
+    bool isDark,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.bolt_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Mô hình: Qwen 2.5 0.5B Nano (Q4_K_M)',
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Tối ưu hóa chạy trực tiếp trên chip thiết bị (CPU/GPU) qua engine GGUF nén 4-bit. '
+                'Tiêu thụ chỉ ~450MB RAM, không nóng máy, không phụ thuộc vào kết nối mạng.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        if (state.isDownloadingModel) ...[
+          Text(
+            'Tiến trình tải mô hình:',
+            style: AppTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: state.downloadProgress > 0 ? state.downloadProgress : null,
+              minHeight: 10,
+              backgroundColor: isDark ? Colors.white12 : Colors.black12,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            state.downloadStatusText,
+            style: AppTypography.bodySmall.copyWith(
+              fontSize: 11,
+              color: AppColors.primary,
+            ),
+          ),
+        ] else if (state.isModelDownloaded) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.success.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.success,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Đã cài đặt sẵn sàng (~350MB)',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => cubit.deleteModel(),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppColors.error,
+                    size: 16,
+                  ),
+                  label: Text(
+                    'Xóa',
+                    style: AppTypography.bodySmall.copyWith(
+                      fontSize: 12,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          ElevatedButton.icon(
+            onPressed: () => cubit.startModelDownload(),
+            icon: const Icon(Icons.cloud_download_rounded, size: 20),
+            label: const Text('Tải Mô Hình On-Device ngay (~350MB)'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Center(
+            child: Text(
+              'Chỉ cần tải 1 lần duy nhất, sau đó sử dụng vĩnh viễn không cần mạng.',
+              style: AppTypography.bodySmall.copyWith(
+                fontSize: 11,
+                color: isDark
+                    ? AppColors.darkTextMuted
+                    : AppColors.lightTextMuted,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildOllamaSettings(
+    BuildContext context,
+    SettingsState state,
+    SettingsCubit cubit,
+    bool isDark,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _urlController,
+          decoration: const InputDecoration(
+            labelText: 'Địa chỉ Host Ollama URL',
+            hintText: 'http://127.0.0.1:11434',
+            prefixIcon: Icon(Icons.link_rounded),
+          ),
+          onSubmitted: (val) => cubit.updateBaseUrl(val),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _modelController,
+          decoration: const InputDecoration(
+            labelText: 'Tên Model',
+            hintText: 'qwen2.5:3b',
+            prefixIcon: Icon(Icons.memory_rounded),
+          ),
+          onSubmitted: (val) => cubit.updateModel(val),
+        ),
+        const SizedBox(height: 10),
+        Text('Model gợi ý tối ưu:', style: AppTypography.bodySmall),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          children: [
+            _buildQuickModelChip('qwen2.5:3b', 'Tối ưu Tiếng Việt ⭐', cubit),
+            _buildQuickModelChip('qwen2.5:1.5b', 'Siêu nhẹ', cubit),
+            _buildQuickModelChip('llama3.2:3b', 'Luyện nói tiếng Anh', cubit),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickModelChip(
+    String model,
+    String subtitle,
+    SettingsCubit cubit,
+  ) {
     return ActionChip(
       label: Text('$model ($subtitle)', style: AppTypography.bodySmall),
       onPressed: () {
@@ -236,11 +529,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: const Icon(Icons.volume_up_rounded, size: 16),
                   label: const Text('Nghe thử'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary.withValues(alpha: 0.15),
+                    backgroundColor: AppColors.secondary.withValues(
+                      alpha: 0.15,
+                    ),
                     foregroundColor: AppColors.secondary,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
                 ),
               ],
@@ -249,7 +549,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             Text(
               'Chọn Giới tính Giọng đọc (AI Voice):',
-              style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
+              style: AppTypography.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -282,7 +584,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             Text(
-              'Tốc độ đọc: ${state.speechRate.toStringAsFixed(1)}x (${state.speechRate < 0.5 ? "Chậm" : state.speechRate == 0.5 ? "Chuẩn" : "Nhanh"})',
+              'Tốc độ đọc: ${state.speechRate.toStringAsFixed(1)}x (${state.speechRate < 0.5
+                  ? "Chậm"
+                  : state.speechRate == 0.5
+                  ? "Chuẩn"
+                  : "Nhanh"})',
               style: AppTypography.bodyMedium,
             ),
             Slider(
@@ -337,14 +643,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     title,
                     style: AppTypography.bodyMedium.copyWith(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
                       color: isSelected ? AppColors.primary : null,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: AppTypography.bodySmall.copyWith(
-                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      color: isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.lightTextMuted,
                       fontSize: 10,
                     ),
                   ),
@@ -352,7 +662,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 18),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.primary,
+                size: 18,
+              ),
           ],
         ),
       ),
@@ -377,11 +691,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final isSelected = profile.code == state.currentLanguage.code;
               return ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Text(profile.flagEmoji, style: const TextStyle(fontSize: 24)),
+                leading: Text(
+                  profile.flagEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
                 title: Text(profile.name, style: AppTypography.label),
-                subtitle: Text(profile.nativeName, style: AppTypography.bodySmall),
+                subtitle: Text(
+                  profile.nativeName,
+                  style: AppTypography.bodySmall,
+                ),
                 trailing: isSelected
-                    ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.primary,
+                      )
                     : null,
                 onTap: () => cubit.selectLanguage(profile),
               );
@@ -402,7 +725,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline_rounded, color: AppColors.secondary, size: 20),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.secondary,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text('Hướng dẫn chạy Local LLM', style: AppTypography.label),
               ],

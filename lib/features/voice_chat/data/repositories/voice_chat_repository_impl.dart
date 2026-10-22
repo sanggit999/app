@@ -26,16 +26,14 @@ class VoiceChatRepositoryImpl implements VoiceChatRepository {
       }
     }
 
-    return llmService.streamChat(
-      messages: messages,
-      model: model,
-    );
+    return llmService.streamChat(messages: messages, model: model);
   }
 
   @override
   Future<String> translateMessage(String text, String targetLang) async {
     return llmService.generate(
-      prompt: 'Translate the following sentence to $targetLang accurately and naturally: "$text". Output ONLY the translation.',
+      prompt:
+          'Translate the following sentence to $targetLang accurately and naturally: "$text". Output ONLY the translation.',
     );
   }
 }

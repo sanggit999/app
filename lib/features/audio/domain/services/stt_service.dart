@@ -1,9 +1,7 @@
 abstract class SttService {
   Future<bool> initialize();
 
-  Stream<String> startListening({
-    required String locale,
-  });
+  Stream<String> startListening({required String locale});
 
   Future<void> stopListening();
 

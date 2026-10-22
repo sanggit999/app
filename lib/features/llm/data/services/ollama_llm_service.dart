@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:echo_lingua/core/errors/exceptions.dart';
 import 'package:echo_lingua/features/llm/domain/services/llm_service.dart';
@@ -36,7 +37,8 @@ class OllamaLlmService implements LlmService {
       response = await client.send(request);
     } catch (e) {
       throw ServerException(
-        message: 'Cannot connect to Local LLM at $baseUrl. Ensure Ollama is running.',
+        message:
+            'Cannot connect to Local LLM at $baseUrl. Ensure Ollama is running.',
       );
     }
 
@@ -96,7 +98,8 @@ class OllamaLlmService implements LlmService {
         );
       }
 
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final decoded =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       return decoded['response'] as String? ?? '';
     } catch (e) {
       if (e is ServerException) rethrow;
@@ -110,7 +113,9 @@ class OllamaLlmService implements LlmService {
   Future<bool> checkHealth() async {
     try {
       final uri = Uri.parse('$baseUrl/api/tags');
-      final response = await client.get(uri).timeout(const Duration(seconds: 3));
+      final response = await client
+          .get(uri)
+          .timeout(const Duration(seconds: 3));
       return response.statusCode == 200;
     } catch (_) {
       return false;

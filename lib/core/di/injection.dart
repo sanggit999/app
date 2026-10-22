@@ -11,7 +11,10 @@ import '../../features/audio/domain/services/stt_service.dart';
 import '../../features/audio/domain/services/tts_service.dart';
 
 // LLM
+import '../../features/llm/data/services/adaptive_llm_service.dart';
+import '../../features/llm/data/services/model_manager.dart';
 import '../../features/llm/data/services/ollama_llm_service.dart';
+import '../../features/llm/data/services/on_device_llm_service.dart';
 import '../../features/llm/domain/services/llm_service.dart';
 
 // Translation
@@ -38,11 +41,30 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<http.Client>(() => http.Client());
 
   // 2. Core & Services
-  sl.registerLazySingleton<LlmService>(
+  sl.registerLazySingleton<ModelManager>(
+    () => ModelManager(client: sl<http.Client>()),
+  );
+
+  sl.registerLazySingleton<OllamaLlmService>(
     () => OllamaLlmService(
       client: sl<http.Client>(),
-      baseUrl: sl<SharedPreferences>().getString('ollama_base_url') ?? 'http://127.0.0.1:11434',
-      defaultModel: sl<SharedPreferences>().getString('ollama_model') ?? 'qwen2.5:3b',
+      baseUrl:
+          sl<SharedPreferences>().getString('ollama_base_url') ??
+          'http://127.0.0.1:11434',
+      defaultModel:
+          sl<SharedPreferences>().getString('ollama_model') ?? 'qwen2.5:3b',
+    ),
+  );
+
+  sl.registerLazySingleton<OnDeviceLlmService>(
+    () => OnDeviceLlmService(modelManager: sl<ModelManager>()),
+  );
+
+  sl.registerLazySingleton<LlmService>(
+    () => AdaptiveLlmService(
+      ollamaService: sl<OllamaLlmService>(),
+      onDeviceService: sl<OnDeviceLlmService>(),
+      sharedPreferences: sl<SharedPreferences>(),
     ),
   );
 
@@ -92,6 +114,7 @@ Future<void> initDependencies() async {
       sharedPreferences: sl<SharedPreferences>(),
       llmService: sl<LlmService>(),
       audioRepository: sl<AudioRepository>(),
+      modelManager: sl<ModelManager>(),
     ),
   );
 }

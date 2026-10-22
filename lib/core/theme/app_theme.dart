@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'app_colors.dart';
 import 'app_typography.dart';
 
@@ -32,7 +33,9 @@ class AppTheme {
         foregroundColor: AppColors.darkTextPrimary,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.heading2.copyWith(color: AppColors.darkTextPrimary),
+        titleTextStyle: AppTypography.heading2.copyWith(
+          color: AppColors.darkTextPrimary,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -48,7 +51,9 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.darkSurface,
-        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.darkTextMuted),
+        hintStyle: AppTypography.bodyMedium.copyWith(
+          color: AppColors.darkTextMuted,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.darkCardBorder),
@@ -94,7 +99,9 @@ class AppTheme {
         foregroundColor: AppColors.lightTextPrimary,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.heading2.copyWith(color: AppColors.lightTextPrimary),
+        titleTextStyle: AppTypography.heading2.copyWith(
+          color: AppColors.lightTextPrimary,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -110,7 +117,9 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.lightSurface,
-        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.lightTextMuted),
+        hintStyle: AppTypography.bodyMedium.copyWith(
+          color: AppColors.lightTextMuted,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.lightCardBorder),

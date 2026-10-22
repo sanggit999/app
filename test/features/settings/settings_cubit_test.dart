@@ -2,24 +2,38 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:echo_lingua/features/audio/domain/repositories/audio_repository.dart';
+import 'package:echo_lingua/features/llm/data/services/model_manager.dart';
 import 'package:echo_lingua/features/llm/domain/services/llm_service.dart';
 import 'package:echo_lingua/features/settings/presentation/cubit/settings_cubit.dart';
 
 class MockSharedPreferences extends Mock implements SharedPreferences {}
+
 class MockLlmService extends Mock implements LlmService {}
+
 class MockAudioRepository extends Mock implements AudioRepository {}
+
+class MockModelManager extends Mock implements ModelManager {}
 
 void main() {
   late MockSharedPreferences mockPrefs;
   late MockLlmService mockLlmService;
   late MockAudioRepository mockAudioRepo;
+  late MockModelManager mockModelManager;
   late SettingsCubit cubit;
 
   setUp(() {
     mockPrefs = MockSharedPreferences();
     mockLlmService = MockLlmService();
     mockAudioRepo = MockAudioRepository();
+    mockModelManager = MockModelManager();
 
+    when(() => mockModelManager.progressStream)
+        .thenAnswer((_) => const Stream.empty());
+    when(() => mockModelManager.isModelDownloaded())
+        .thenAnswer((_) async => false);
+    when(() => mockModelManager.deleteModel()).thenAnswer((_) async {});
+
+    when(() => mockPrefs.getString('llm_execution_mode')).thenReturn(null);
     when(() => mockPrefs.getString('ollama_base_url')).thenReturn(null);
     when(() => mockPrefs.getString('ollama_model')).thenReturn(null);
     when(() => mockPrefs.getDouble('tts_speech_rate')).thenReturn(null);
@@ -33,6 +47,7 @@ void main() {
       sharedPreferences: mockPrefs,
       llmService: mockLlmService,
       audioRepository: mockAudioRepo,
+      modelManager: mockModelManager,
     );
   });
 
@@ -43,34 +58,70 @@ void main() {
   test('default state has female voiceGender and 0.5 speechRate', () {
     expect(cubit.state.voiceGender, equals('female'));
     expect(cubit.state.speechRate, equals(0.5));
+    expect(cubit.state.executionMode, equals('ollama'));
   });
 
-  test('updateVoiceGender saves to SharedPreferences and emits new state', () async {
-    when(() => mockPrefs.setString('voice_gender', 'male'))
-        .thenAnswer((_) async => true);
+  test(
+    'updateExecutionMode saves to SharedPreferences and emits new state',
+    () async {
+      when(() => mockPrefs.setString('llm_execution_mode', 'on_device'))
+          .thenAnswer((_) async => true);
 
-    await cubit.updateVoiceGender('male');
+      await cubit.updateExecutionMode('on_device');
 
-    expect(cubit.state.voiceGender, equals('male'));
-    verify(() => mockPrefs.setString('voice_gender', 'male')).called(1);
-  });
+      expect(cubit.state.executionMode, equals('on_device'));
+      expect(cubit.state.isOnDevice, isTrue);
+      verify(() => mockPrefs.setString('llm_execution_mode', 'on_device'))
+          .called(1);
+    },
+  );
 
-  test('testVoicePlayback triggers audioRepository speak with voiceGender', () async {
-    when(() => mockAudioRepo.speak(
+  test(
+    'updateVoiceGender saves to SharedPreferences and emits new state',
+    () async {
+      when(() => mockPrefs.setString('voice_gender', 'male'))
+          .thenAnswer((_) async => true);
+
+      await cubit.updateVoiceGender('male');
+
+      expect(cubit.state.voiceGender, equals('male'));
+      verify(() => mockPrefs.setString('voice_gender', 'male')).called(1);
+    },
+  );
+
+  test(
+    'deleteModel calls modelManager.deleteModel and updates state',
+    () async {
+      await cubit.deleteModel();
+
+      expect(cubit.state.isModelDownloaded, isFalse);
+      verify(() => mockModelManager.deleteModel()).called(1);
+    },
+  );
+
+  test(
+    'testVoicePlayback triggers audioRepository speak with voiceGender',
+    () async {
+      when(
+        () => mockAudioRepo.speak(
           any(),
           locale: any(named: 'locale'),
           rate: any(named: 'rate'),
           voiceGender: any(named: 'voiceGender'),
-        )).thenAnswer((_) async {});
+        ),
+      ).thenAnswer((_) async {});
 
-    await cubit.updateVoiceGender('male');
-    await cubit.testVoicePlayback();
+      await cubit.updateVoiceGender('male');
+      await cubit.testVoicePlayback();
 
-    verify(() => mockAudioRepo.speak(
+      verify(
+        () => mockAudioRepo.speak(
           any(),
           locale: cubit.state.currentLanguage.ttsLocale,
           rate: cubit.state.speechRate,
           voiceGender: 'male',
-        )).called(1);
-  });
+        ),
+      ).called(1);
+    },
+  );
 }

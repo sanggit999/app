@@ -43,15 +43,21 @@ class _TranslationScreenState extends State<TranslationScreen> {
       setState(() => _isDictating = false);
     } else {
       setState(() => _isDictating = true);
-      audioRepo.startListening(locale: _sourceLang.sttLocale).listen((words) {
-        setState(() {
-          _inputController.text = words;
-        });
-      }, onDone: () {
-        setState(() => _isDictating = false);
-      }, onError: (_) {
-        setState(() => _isDictating = false);
-      });
+      audioRepo
+          .startListening(locale: _sourceLang.sttLocale)
+          .listen(
+            (words) {
+              setState(() {
+                _inputController.text = words;
+              });
+            },
+            onDone: () {
+              setState(() => _isDictating = false);
+            },
+            onError: (_) {
+              setState(() => _isDictating = false);
+            },
+          );
     }
   }
 
@@ -74,18 +80,29 @@ class _TranslationScreenState extends State<TranslationScreen> {
                 color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder,
+                  color: isDark
+                      ? AppColors.darkCardBorder
+                      : AppColors.lightCardBorder,
                 ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildLanguagePicker(_sourceLang, (p) => setState(() => _sourceLang = p)),
+                  _buildLanguagePicker(
+                    _sourceLang,
+                    (p) => setState(() => _sourceLang = p),
+                  ),
                   IconButton(
-                    icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
+                    icon: const Icon(
+                      Icons.swap_horiz_rounded,
+                      color: AppColors.primary,
+                    ),
                     onPressed: _swapLanguages,
                   ),
-                  _buildLanguagePicker(_targetLang, (p) => setState(() => _targetLang = p)),
+                  _buildLanguagePicker(
+                    _targetLang,
+                    (p) => setState(() => _targetLang = p),
+                  ),
                 ],
               ),
             ),
@@ -97,7 +114,9 @@ class _TranslationScreenState extends State<TranslationScreen> {
                 color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder,
+                  color: isDark
+                      ? AppColors.darkCardBorder
+                      : AppColors.lightCardBorder,
                 ),
               ),
               padding: const EdgeInsets.all(16.0),
@@ -114,7 +133,9 @@ class _TranslationScreenState extends State<TranslationScreen> {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       fillColor: Colors.transparent,
-                      hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.darkTextMuted),
+                      hintStyle: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.darkTextMuted,
+                      ),
                     ),
                     style: AppTypography.bodyLarge,
                   ),
@@ -122,16 +143,23 @@ class _TranslationScreenState extends State<TranslationScreen> {
                   Row(
                     children: [
                       IconButton(
-                        tooltip: _isDictating ? 'Dừng ghi âm' : 'Nói để nhập văn bản',
+                        tooltip: _isDictating
+                            ? 'Dừng ghi âm'
+                            : 'Nói để nhập văn bản',
                         icon: Icon(
                           _isDictating ? Icons.mic : Icons.mic_none_rounded,
-                          color: _isDictating ? AppColors.micRecording : AppColors.primary,
+                          color: _isDictating
+                              ? AppColors.micRecording
+                              : AppColors.primary,
                         ),
                         onPressed: _toggleDictation,
                       ),
                       IconButton(
                         tooltip: 'Phát âm câu gốc',
-                        icon: const Icon(Icons.volume_up_outlined, color: AppColors.darkTextSecondary),
+                        icon: const Icon(
+                          Icons.volume_up_outlined,
+                          color: AppColors.darkTextSecondary,
+                        ),
                         onPressed: () {
                           if (_inputController.text.isNotEmpty) {
                             sl<AudioRepository>().speak(
@@ -158,10 +186,10 @@ class _TranslationScreenState extends State<TranslationScreen> {
                           final text = _inputController.text.trim();
                           if (text.isNotEmpty) {
                             context.read<TranslationCubit>().translate(
-                                  text: text,
-                                  sourceLang: _sourceLang.name,
-                                  targetLang: _targetLang.name,
-                                );
+                              text: text,
+                              sourceLang: _sourceLang.name,
+                              targetLang: _targetLang.name,
+                            );
                           }
                         },
                       ),
@@ -179,7 +207,9 @@ class _TranslationScreenState extends State<TranslationScreen> {
                   return const Padding(
                     padding: EdgeInsets.all(32.0),
                     child: Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     ),
                   );
                 }
@@ -193,7 +223,9 @@ class _TranslationScreenState extends State<TranslationScreen> {
                     ),
                     child: Text(
                       'Lỗi dịch: ${state.message}',
-                      style: AppTypography.bodyMedium.copyWith(color: AppColors.error),
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.error,
+                      ),
                     ),
                   );
                 }
@@ -203,10 +235,14 @@ class _TranslationScreenState extends State<TranslationScreen> {
                   return Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : AppColors.lightSurface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder,
+                        color: isDark
+                            ? AppColors.darkCardBorder
+                            : AppColors.lightCardBorder,
                       ),
                     ),
                     padding: const EdgeInsets.all(18.0),
@@ -219,12 +255,17 @@ class _TranslationScreenState extends State<TranslationScreen> {
                             Expanded(
                               child: Text(
                                 res.translatedText,
-                                style: AppTypography.heading2.copyWith(color: AppColors.primaryLight),
+                                style: AppTypography.heading2.copyWith(
+                                  color: AppColors.primaryLight,
+                                ),
                               ),
                             ),
                             IconButton(
                               tooltip: 'Bấm loa để nghe phát âm',
-                              icon: const Icon(Icons.volume_up_rounded, color: AppColors.secondary),
+                              icon: const Icon(
+                                Icons.volume_up_rounded,
+                                color: AppColors.secondary,
+                              ),
                               onPressed: () {
                                 sl<AudioRepository>().speak(
                                   res.translatedText,
@@ -236,33 +277,48 @@ class _TranslationScreenState extends State<TranslationScreen> {
                         ),
 
                         // Phonetic & Part of speech tags
-                        if (res.phonetic.isNotEmpty || res.partOfSpeech.isNotEmpty) ...[
+                        if (res.phonetic.isNotEmpty ||
+                            res.partOfSpeech.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8,
                             children: [
                               if (res.phonetic.isNotEmpty)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.secondary.withValues(alpha: 0.15),
+                                    color: AppColors.secondary.withValues(
+                                      alpha: 0.15,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     res.phonetic,
-                                    style: AppTypography.label.copyWith(color: AppColors.secondary),
+                                    style: AppTypography.label.copyWith(
+                                      color: AppColors.secondary,
+                                    ),
                                   ),
                                 ),
                               if (res.partOfSpeech.isNotEmpty)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.accent.withValues(alpha: 0.15),
+                                    color: AppColors.accent.withValues(
+                                      alpha: 0.15,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     res.partOfSpeech,
-                                    style: AppTypography.label.copyWith(color: AppColors.accent),
+                                    style: AppTypography.label.copyWith(
+                                      color: AppColors.accent,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -272,12 +328,17 @@ class _TranslationScreenState extends State<TranslationScreen> {
                         // Grammar explanation
                         if (res.explanation.isNotEmpty) ...[
                           const SizedBox(height: 14),
-                          Text('Giải thích & Ngữ cảnh:', style: AppTypography.label),
+                          Text(
+                            'Giải thích & Ngữ cảnh:',
+                            style: AppTypography.label,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             res.explanation,
                             style: AppTypography.bodyMedium.copyWith(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.lightTextSecondary,
                             ),
                           ),
                         ],
@@ -293,13 +354,28 @@ class _TranslationScreenState extends State<TranslationScreen> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('• ', style: TextStyle(color: AppColors.secondary)),
+                                  const Text(
+                                    '• ',
+                                    style: TextStyle(
+                                      color: AppColors.secondary,
+                                    ),
+                                  ),
                                   Expanded(
-                                    child: Text(eg, style: AppTypography.bodySmall),
+                                    child: Text(
+                                      eg,
+                                      style: AppTypography.bodySmall,
+                                    ),
                                   ),
                                   InkWell(
-                                    child: const Icon(Icons.volume_up_outlined, size: 16, color: AppColors.darkTextMuted),
-                                    onTap: () => sl<AudioRepository>().speak(eg, locale: _targetLang.ttsLocale),
+                                    child: const Icon(
+                                      Icons.volume_up_outlined,
+                                      size: 16,
+                                      color: AppColors.darkTextMuted,
+                                    ),
+                                    onTap: () => sl<AudioRepository>().speak(
+                                      eg,
+                                      locale: _targetLang.ttsLocale,
+                                    ),
                                   ),
                                 ],
                               ),

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:echo_lingua/core/theme/app_colors.dart';
 
@@ -47,10 +48,14 @@ class _AudioWaveVisualizerState extends State<AudioWaveVisualizer>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double availableWidth = constraints.hasBoundedWidth && constraints.maxWidth > 0
+        final double availableWidth =
+            constraints.hasBoundedWidth && constraints.maxWidth > 0
             ? constraints.maxWidth
             : widget.barCount * 7.5;
-        final int effectiveBars = math.max(4, (availableWidth / 7.5).floor().clamp(4, widget.barCount));
+        final int effectiveBars = math.max(
+          4,
+          (availableWidth / 7.5).floor().clamp(4, widget.barCount),
+        );
 
         return AnimatedBuilder(
           animation: _animController,
@@ -67,9 +72,16 @@ class _AudioWaveVisualizerState extends State<AudioWaveVisualizer>
 
                   double barHeight;
                   if (widget.isActive) {
-                    final double soundBoost = (widget.soundLevel / 10.0).clamp(0.0, 1.0);
-                    final double wave = (math.sin(phase + normalizedIndex * 4 * math.pi) + 1) / 2;
-                    barHeight = 6.0 + (wave * 0.6 + soundBoost * 0.4) * (widget.height - 6.0);
+                    final double soundBoost = (widget.soundLevel / 10.0).clamp(
+                      0.0,
+                      1.0,
+                    );
+                    final double wave =
+                        (math.sin(phase + normalizedIndex * 4 * math.pi) + 1) /
+                        2;
+                    barHeight =
+                        6.0 +
+                        (wave * 0.6 + soundBoost * 0.4) * (widget.height - 6.0);
                   } else {
                     barHeight = 4.0;
                   }
@@ -81,7 +93,8 @@ class _AudioWaveVisualizerState extends State<AudioWaveVisualizer>
                     decoration: BoxDecoration(
                       color: widget.isActive
                           ? waveColor.withValues(
-                              alpha: (0.5 + 0.5 * (barHeight / widget.height)).clamp(0.0, 1.0),
+                              alpha: (0.5 + 0.5 * (barHeight / widget.height))
+                                  .clamp(0.0, 1.0),
                             )
                           : AppColors.darkTextMuted.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4.0),
