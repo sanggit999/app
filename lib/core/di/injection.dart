@@ -2,6 +2,8 @@ import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/device_profile_service.dart';
+
 // Audio
 import '../../features/audio/data/repositories/audio_repository_impl.dart';
 import '../../features/audio/data/services/flutter_tts_service.dart';
@@ -109,12 +111,15 @@ Future<void> initDependencies() async {
     () => TranslationCubit(translateUseCase: sl<TranslateTextUseCase>()),
   );
 
+  sl.registerLazySingleton<DeviceProfileService>(() => DeviceProfileService());
+
   sl.registerFactory<SettingsCubit>(
     () => SettingsCubit(
       sharedPreferences: sl<SharedPreferences>(),
       llmService: sl<LlmService>(),
       audioRepository: sl<AudioRepository>(),
       modelManager: sl<ModelManager>(),
+      deviceProfileService: sl<DeviceProfileService>(),
     ),
   );
 }

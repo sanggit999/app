@@ -121,4 +121,24 @@ class OllamaLlmService implements LlmService {
       return false;
     }
   }
+
+  /// Lấy danh sách tên model thực tế đang được cài đặt trên máy chủ Ollama
+  Future<List<String>> getInstalledModelNames() async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/tags');
+      final response = await client
+          .get(uri)
+          .timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final decoded =
+            jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        final models = decoded['models'] as List<dynamic>? ?? [];
+        return models
+            .map((m) => (m['name'] as String? ?? '').trim())
+            .where((name) => name.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
 }

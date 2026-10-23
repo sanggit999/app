@@ -10,11 +10,21 @@ import 'audio_wave_visualizer.dart';
 class LiveVoiceCallModal extends StatefulWidget {
   final String languageName;
   final String flagEmoji;
+  final String systemPrompt;
+  final String ttsLocale;
+  final String sttLocale;
+  final String voiceGender;
+  final double speechRate;
 
   const LiveVoiceCallModal({
     super.key,
     required this.languageName,
     required this.flagEmoji,
+    required this.systemPrompt,
+    required this.ttsLocale,
+    required this.sttLocale,
+    this.voiceGender = 'female',
+    this.speechRate = 0.5,
   });
 
   static Future<void> show(
@@ -28,13 +38,6 @@ class LiveVoiceCallModal extends StatefulWidget {
     double speechRate = 0.5,
   }) async {
     final cubit = context.read<VoiceChatCubit>();
-    cubit.startLiveMode(
-      systemPrompt: systemPrompt,
-      ttsLocale: ttsLocale,
-      sttLocale: sttLocale,
-      voiceGender: voiceGender,
-      speechRate: speechRate,
-    );
 
     await showModalBottomSheet(
       context: context,
@@ -42,11 +45,17 @@ class LiveVoiceCallModal extends StatefulWidget {
       backgroundColor: Colors.transparent,
       enableDrag: false,
       isDismissible: false,
+      useSafeArea: true,
       builder: (_) => BlocProvider.value(
         value: cubit,
         child: LiveVoiceCallModal(
           languageName: languageName,
           flagEmoji: flagEmoji,
+          systemPrompt: systemPrompt,
+          ttsLocale: ttsLocale,
+          sttLocale: sttLocale,
+          voiceGender: voiceGender,
+          speechRate: speechRate,
         ),
       ),
     );
@@ -63,6 +72,7 @@ class LiveVoiceCallModal extends StatefulWidget {
 class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
     with SingleTickerProviderStateMixin {
   late AnimationController _auraController;
+  bool _isExiting = false;
 
   @override
   void initState() {
@@ -71,6 +81,20 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
+
+    // Safely trigger live mode after bottom sheet has mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isExiting) {
+        final cubit = context.read<VoiceChatCubit>();
+        cubit.startLiveMode(
+          systemPrompt: widget.systemPrompt,
+          ttsLocale: widget.ttsLocale,
+          sttLocale: widget.sttLocale,
+          voiceGender: widget.voiceGender,
+          speechRate: widget.speechRate,
+        );
+      }
+    });
   }
 
   @override
@@ -79,12 +103,27 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
     super.dispose();
   }
 
+  void _safeClose() {
+    if (_isExiting) return;
+    _isExiting = true;
+    final cubit = context.read<VoiceChatCubit>();
+    if (cubit.state.isLiveMode) {
+      cubit.stopLiveMode();
+    }
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<VoiceChatCubit, VoiceChatState>(
       listener: (context, state) {
-        if (!state.isLiveMode) {
-          Navigator.of(context).maybePop();
+        if (!state.isLiveMode && !_isExiting) {
+          _isExiting = true;
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
         }
       },
       builder: (context, state) {
@@ -94,7 +133,8 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
         return PopScope(
           canPop: true,
           onPopInvokedWithResult: (didPop, _) {
-            if (didPop && cubit.state.isLiveMode) {
+            _isExiting = true;
+            if (cubit.state.isLiveMode) {
               cubit.stopLiveMode();
             }
           },
@@ -152,18 +192,74 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
                             color: Colors.white70,
                             size: 26,
                           ),
-                          onPressed: () => cubit.stopLiveMode(),
+                          onPressed: _safeClose,
                         ),
                       ],
                     ),
                   ),
+
+                  // Optional Error Banner in Live Mode
+                  if (state.errorMessage != null &&
+                      state.errorMessage!.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 6,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              state.errorMessage!,
+                              style: AppTypography.bodySmall.copyWith(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.secondary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () => cubit.bargeIn(),
+                            child: const Text('Thử lại'),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   const Spacer(),
 
                   // Center Dynamic Ambient Aura Orb
                   _buildAuraOrb(state, status, cubit),
 
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 32),
 
                   // Live Status Label
                   _buildStatusLabel(status),
@@ -176,7 +272,7 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
                     child: Container(
                       constraints: const BoxConstraints(
                         minHeight: 64,
-                        maxHeight: 110,
+                        maxHeight: 120,
                       ),
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -192,10 +288,11 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
                       ),
                       child: Center(
                         child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
                           child: Text(
                             _getDisplayText(state, status),
                             style: AppTypography.bodyMedium.copyWith(
-                              color: Colors.white.withValues(alpha: 0.88),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontStyle: status == 'thinking'
                                   ? FontStyle.italic
                                   : FontStyle.normal,
@@ -222,7 +319,7 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
                         _buildSecondaryAction(
                           icon: Icons.mic_rounded,
                           label: 'Nói ngay',
-                          color: status == 'speaking'
+                          color: (status == 'speaking' || status == 'idle')
                               ? AppColors.secondary
                               : Colors.white60,
                           onTap: () => cubit.bargeIn(),
@@ -230,7 +327,7 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
 
                         // End Call Button
                         GestureDetector(
-                          onTap: () => cubit.stopLiveMode(),
+                          onTap: _safeClose,
                           child: Container(
                             width: 68,
                             height: 68,
@@ -299,6 +396,9 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
     } else if (status == 'thinking') {
       orbColor = AppColors.primaryLight;
       glowColor = AppColors.primary.withValues(alpha: 0.4);
+    } else if (status == 'idle') {
+      orbColor = Colors.grey.shade600;
+      glowColor = Colors.grey.withValues(alpha: 0.25);
     } else {
       orbColor = AppColors.secondary;
       glowColor = AppColors.secondary.withValues(alpha: 0.4);
@@ -314,7 +414,7 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
 
         return GestureDetector(
           onTap: () {
-            if (status == 'speaking') {
+            if (status == 'speaking' || status == 'idle') {
               cubit.bargeIn();
             }
           },
@@ -376,12 +476,18 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
                                 color: Colors.white,
                                 size: 52,
                               )
-                            : AudioWaveVisualizer(
-                                isActive: state.isListening,
-                                soundLevel: state.soundLevel,
-                                height: 32,
-                                color: Colors.white,
-                              )),
+                            : (status == 'idle'
+                                  ? const Icon(
+                                      Icons.touch_app_rounded,
+                                      color: Colors.white,
+                                      size: 44,
+                                    )
+                                  : AudioWaveVisualizer(
+                                      isActive: state.isListening,
+                                      soundLevel: state.soundLevel,
+                                      height: 32,
+                                      color: Colors.white,
+                                    ))),
                 ),
               ),
             ],
@@ -401,18 +507,24 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
     } else if (status == 'thinking') {
       text = '✨ Gia sư AI đang suy nghĩ...';
       color = AppColors.primaryLight;
+    } else if (status == 'idle') {
+      text = '⏸️ Đang tạm dừng. Chạm Orb hoặc bấm "Nói ngay"';
+      color = Colors.white70;
     } else {
       text = '🎙️ Đang lắng nghe... hãy nói ${widget.languageName}';
       color = AppColors.secondary;
     }
 
-    return Text(
-      text,
-      style: AppTypography.heading3.copyWith(
-        color: color,
-        fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        text,
+        style: AppTypography.heading3.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+        textAlign: TextAlign.center,
       ),
-      textAlign: TextAlign.center,
     );
   }
 
@@ -431,6 +543,9 @@ class _LiveVoiceCallModalState extends State<LiveVoiceCallModal>
     }
     if (state.partialRecognizedText.isNotEmpty) {
       return '"${state.partialRecognizedText}"';
+    }
+    if (status == 'idle') {
+      return 'Bấm "Nói ngay" để tiếp tục cuộc trò chuyện.';
     }
     return 'Hãy nói tự nhiên, gia sư AI sẽ nghe và phản hồi trực tiếp bằng giọng nói.';
   }

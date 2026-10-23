@@ -37,10 +37,14 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     _speakingSubscription = audioRepository.isSpeakingStream.listen((
       isSpeaking,
     ) {
-      if (!isSpeaking && state.speakingMessageId != null) {
-        emit(state.copyWith(clearSpeakingId: true));
-        if (state.isLiveMode) {
-          _triggerNextLiveTurn();
+      if (!isSpeaking) {
+        final wasSpeaking = state.speakingMessageId != null ||
+            (state.isLiveMode && state.liveStatus == 'speaking');
+        if (wasSpeaking) {
+          emit(state.copyWith(clearSpeakingId: true));
+          if (state.isLiveMode) {
+            _triggerNextLiveTurn();
+          }
         }
       }
     });
@@ -80,6 +84,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
           emit(
             state.copyWith(
               isListening: false,
+              liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
               errorMessage: 'Microphone error: $err',
             ),
           );
@@ -89,6 +94,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       emit(
         state.copyWith(
           isListening: false,
+          liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
           errorMessage: 'Could not access microphone: $e',
         ),
       );
@@ -269,6 +275,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
             state.copyWith(
               isThinking: false,
               isStreaming: false,
+              liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
               errorMessage: 'Local LLM connection error: $err',
             ),
           );
@@ -279,6 +286,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
         state.copyWith(
           isThinking: false,
           isStreaming: false,
+          liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
           errorMessage: 'Failed to process message: $e',
         ),
       );
@@ -303,9 +311,13 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       emit(
         state.copyWith(
           clearSpeakingId: true,
+          liveStatus: state.isLiveMode ? 'idle' : state.liveStatus,
           errorMessage: 'TTS playback error: $e',
         ),
       );
+      if (state.isLiveMode) {
+        _triggerNextLiveTurn();
+      }
     }
   }
 
@@ -399,6 +411,8 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
           systemPrompt: _currentSystemPrompt ?? 'Be a helpful language coach',
           ttsLocale: _currentTtsLocale ?? 'en-US',
           model: _currentModel,
+          voiceGender: _currentVoiceGender ?? 'female',
+          speechRate: _currentSpeechRate ?? 0.5,
         );
       }
     });

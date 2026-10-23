@@ -4,6 +4,7 @@ import 'package:echo_lingua/core/theme/app_colors.dart';
 import 'package:echo_lingua/core/theme/app_typography.dart';
 import 'package:echo_lingua/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:echo_lingua/features/settings/presentation/cubit/settings_state.dart';
+import 'package:echo_lingua/features/settings/presentation/views/settings_screen.dart';
 import 'package:echo_lingua/features/voice_chat/presentation/cubit/voice_chat_cubit.dart';
 import 'package:echo_lingua/features/voice_chat/presentation/cubit/voice_chat_state.dart';
 import 'package:echo_lingua/features/voice_chat/presentation/widgets/chat_message_bubble.dart';
@@ -43,9 +44,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     super.dispose();
   }
 
-  void _scrollToBottom({int delayMs = 0}) {
+  void _scrollToBottom({int delayMs = 100}) {
     void doScroll() {
-      if (!mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -64,10 +64,519 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     }
   }
 
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: const Text('Cài đặt AI & Giọng nói'),
+          ),
+          body: const SettingsScreen(),
+        ),
+      ),
+    );
+  }
+
+  bool _ensureLlmReady(BuildContext context, SettingsState settings) {
+    if (settings.isLlmReady) {
+      return true;
+    }
+    _showLlmNotReadySheet(context, settings);
+    return false;
+  }
+
+  void _showLlmNotReadySheet(BuildContext context, SettingsState settings) {
+    final settingsCubit = context.read<SettingsCubit>();
+    final isOnDevice = settings.isOnDevice;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return BlocConsumer<SettingsCubit, SettingsState>(
+          listener: (context, currentSettings) {
+            if (currentSettings.isModelDownloaded) {
+              Navigator.of(bottomSheetContext).maybePop();
+            }
+          },
+          builder: (context, currentSettings) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final isDownloading = currentSettings.isDownloadingModel;
+            final hasPart = currentSettings.hasPartialDownload;
+
+            String title;
+            String message;
+            IconData headerIcon;
+            Color iconColor;
+
+            if (isOnDevice) {
+              if (isDownloading) {
+                title = 'Đang tải mô hình On-Device';
+                message =
+                    'Mô hình AI đang được tải về máy của bạn. Bạn có thể đóng cửa sổ này để theo dõi tiến độ tải trực tiếp ngay dưới thanh tiêu đề.';
+                headerIcon = Icons.cloud_download_rounded;
+                iconColor = AppColors.primary;
+              } else if (hasPart) {
+                title = 'Tải mô hình đang tạm dừng';
+                message =
+                    'Đã có sẵn ${currentSettings.partialDownloadedMb} MB dữ liệu tải trước. Bấm Tiếp tục tải để hệ thống tải tiếp ngầm và hiển thị tiến độ ở đầu trang.';
+                headerIcon = Icons.pause_circle_outline_rounded;
+                iconColor = AppColors.warning;
+              } else {
+                title = 'Chưa tải mô hình On-Device';
+                message =
+                    'EchoLingua sử dụng mô hình AI Qwen 2.5 0.5B (~350MB) chạy ngoại tuyến 100% riêng tư trên thiết bị. Bấm Tải ngay để bắt đầu tải và theo dõi tiến độ ở màn hình chính.';
+                headerIcon = Icons.downloading_rounded;
+                iconColor = AppColors.secondary;
+              }
+            } else {
+              title = 'Chưa kết nối máy chủ Ollama';
+              message =
+                  'Không thể kết nối đến Ollama tại địa chỉ "${currentSettings.ollamaBaseUrl}". Vui lòng kiểm tra lại xem Ollama đã được khởi động chưa hoặc chuyển sang chế độ On-Device trong Cài đặt.';
+              headerIcon = Icons.cloud_off_rounded;
+              iconColor = AppColors.error;
+            }
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+
+                    // Icon & Header
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(headerIcon, color: iconColor, size: 40),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: AppTypography.heading2,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      message,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.lightTextSecondary,
+                        height: 1.45,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.of(bottomSheetContext).pop();
+                              _openSettings(context);
+                            },
+                            child: const Text('Mở Cài đặt'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 2,
+                            ),
+                            onPressed: () {
+                              if (isOnDevice) {
+                                if (isDownloading) {
+                                  // Đang tải thì đóng modal để xem tiến độ dưới AppBar
+                                  Navigator.of(bottomSheetContext).pop();
+                                } else {
+                                  // Bắt đầu tải và tự động đóng modal để tránh duplicate UI
+                                  settingsCubit.startModelDownload();
+                                  Navigator.of(bottomSheetContext).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: const [
+                                          Icon(
+                                            Icons.cloud_download_rounded,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'Bắt đầu tải mô hình On-Device. Theo dõi tiến trình ở đầu trang.',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                settingsCubit.testConnection();
+                                Navigator.of(bottomSheetContext).pop();
+                              }
+                            },
+                            child: Text(
+                              isOnDevice
+                                  ? (isDownloading
+                                      ? 'Đóng xem tiến độ'
+                                      : (hasPart
+                                          ? 'Tiếp tục tải'
+                                          : 'Tải mô hình ngay'))
+                                  : 'Thử kết nối lại',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _openLiveModal(BuildContext context, SettingsState settings) {
+    if (!_ensureLlmReady(context, settings)) return;
+
+    final currentProfile = settings.currentLanguage;
+    LiveVoiceCallModal.show(
+      context,
+      languageName: currentProfile.name,
+      flagEmoji: currentProfile.flagEmoji,
+      systemPrompt: currentProfile.defaultSystemPrompt,
+      ttsLocale: currentProfile.ttsLocale,
+      sttLocale: currentProfile.sttLocale,
+      voiceGender: settings.voiceGender,
+      speechRate: settings.speechRate,
+    );
+  }
+
+  Widget _buildConnectionBanner(
+    BuildContext context,
+    SettingsState settings,
+    SettingsCubit settingsCubit,
+  ) {
+    final isOnDevice = settings.isOnDevice;
+
+    // 1. On-Device Mode Cases
+    if (isOnDevice) {
+      if (settings.isDownloadingModel) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            border: Border(
+              bottom: BorderSide(
+                color: AppColors.primary.withValues(alpha: 0.25),
+              ),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Đang tải mô hình On-Device Qwen 2.5...',
+                      style: AppTypography.bodySmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () =>
+                        settingsCubit.pauseOrCancelModelDownload(),
+                    child: const Text('Tạm dừng'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: settings.downloadProgress > 0
+                      ? settings.downloadProgress
+                      : null,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  color: AppColors.primary,
+                  minHeight: 5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                settings.downloadStatusText,
+                style: AppTypography.bodySmall.copyWith(
+                  fontSize: 11,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (settings.hasPartialDownload && !settings.isModelDownloaded) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: AppColors.warning.withValues(alpha: 0.15),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.pause_circle_filled_rounded,
+                color: AppColors.warning,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tải On-Device AI tạm dừng (${settings.partialDownloadedMb} MB). Bấm tiếp tục để sử dụng.',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => settingsCubit.startModelDownload(),
+                child: const Text(
+                  'Tiếp tục tải',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (!settings.isModelDownloaded) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          color: AppColors.error.withValues(alpha: 0.12),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.error,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Chưa có mô hình On-Device (~350MB). Cần tải model để trò chuyện offline.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => settingsCubit.startModelDownload(),
+                icon: const Icon(Icons.cloud_download_rounded, size: 14),
+                label: const Text(
+                  'Tải ngay',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    // 2. Ollama Mode Cases
+    if (!isOnDevice) {
+      if (settings.connectionStatus == ConnectionStatus.failed) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: AppColors.error.withValues(alpha: 0.15),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.cloud_off_rounded,
+                color: AppColors.error,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Chưa kết nối Ollama (${settings.ollamaBaseUrl}). Hãy kiểm tra xem Ollama đã chạy chưa.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => settingsCubit.testConnection(),
+                child: const Text('Thử lại'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => _openSettings(context),
+                child: const Text('Cài đặt'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (settings.connectionStatus == ConnectionStatus.checking) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          color: AppColors.primary.withValues(alpha: 0.1),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Đang kiểm tra kết nối AI...',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.primary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsCubit>().state;
+    final settingsCubit = context.watch<SettingsCubit>();
+    final settings = settingsCubit.state;
     final currentProfile = settings.currentLanguage;
+    final isLlmReady = settings.isLlmReady;
 
     return BlocConsumer<VoiceChatCubit, VoiceChatState>(
       listener: (context, state) {
@@ -82,7 +591,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             TextPosition(offset: _textController.text.length),
           );
         }
-        if (state.errorMessage != null) {
+        if (state.errorMessage != null && !state.isLiveMode) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.errorMessage!),
@@ -134,18 +643,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                   horizontal: 4,
                 ),
                 child: InkWell(
-                  onTap: () {
-                    LiveVoiceCallModal.show(
-                      context,
-                      languageName: currentProfile.name,
-                      flagEmoji: currentProfile.flagEmoji,
-                      systemPrompt: currentProfile.defaultSystemPrompt,
-                      ttsLocale: currentProfile.ttsLocale,
-                      sttLocale: currentProfile.sttLocale,
-                      voiceGender: settings.voiceGender,
-                      speechRate: settings.speechRate,
-                    );
-                  },
+                  onTap: () => _openLiveModal(context, settings),
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -153,24 +651,35 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.secondary],
-                      ),
+                      gradient: isLlmReady
+                          ? const LinearGradient(
+                              colors: [AppColors.primary, AppColors.secondary],
+                            )
+                          : LinearGradient(
+                              colors: [
+                                Colors.grey.shade700,
+                                Colors.grey.shade800,
+                              ],
+                            ),
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.35),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: isLlmReady
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.35),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.graphic_eq_rounded,
-                          color: Colors.white,
+                        Icon(
+                          isLlmReady
+                              ? Icons.graphic_eq_rounded
+                              : Icons.warning_amber_rounded,
+                          color: isLlmReady ? Colors.white : AppColors.warning,
                           size: 16,
                         ),
                         const SizedBox(width: 4),
@@ -214,34 +723,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             onTap: () => FocusScope.of(context).unfocus(),
             child: Column(
               children: [
-                // Connection status notice if failed
-                if (settings.connectionStatus == ConnectionStatus.failed)
-                  Container(
-                    width: double.infinity,
-                    color: AppColors.error.withValues(alpha: 0.15),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: AppColors.error,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Chưa kết nối Local LLM. Kiểm tra Ollama tại mục Cài đặt.',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.error,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                // Interactive LLM Connection Status Banner
+                _buildConnectionBanner(context, settings, settingsCubit),
 
                 // Chat Messages or Empty Welcome View
                 Expanded(
@@ -249,6 +732,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                       ? _buildWelcomeHero(
                           context,
                           cubit,
+                          settings,
                           currentProfile.defaultSystemPrompt,
                           currentProfile.ttsLocale,
                           currentProfile.sttLocale,
@@ -263,7 +747,6 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                           padding: const EdgeInsets.only(top: 8, bottom: 8),
                           itemCount: state.messages.length,
                           itemBuilder: (context, index) {
-                            // Reverse indexing: index 0 is at bottom (latest message)
                             final msg = state
                                 .messages[state.messages.length - 1 - index];
                             return ChatMessageBubble(
@@ -328,6 +811,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                   context,
                   cubit,
                   state,
+                  settings,
                   currentProfile.defaultSystemPrompt,
                   currentProfile.ttsLocale,
                   currentProfile.sttLocale,
@@ -345,12 +829,15 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   Widget _buildWelcomeHero(
     BuildContext context,
     VoiceChatCubit cubit,
+    SettingsState settings,
     String systemPrompt,
     String ttsLocale,
     String sttLocale,
     String languageName,
     String flagEmoji,
   ) {
+    final isLlmReady = settings.isLlmReady;
+
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -389,7 +876,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Bấm nút Micro để nói, hoặc gõ văn bản.\nAI sẽ phản hồi bằng tiếng Anh và phát âm chuẩn bản xứ.',
+              'Bấm nút Micro để nói, hoặc gõ văn bản.\nAI sẽ phản hồi bằng tiếng $languageName và phát âm chuẩn bản xứ.',
               style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.darkTextSecondary,
               ),
@@ -397,29 +884,29 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
-              onPressed: () {
-                final settings = context.read<SettingsCubit>().state;
-                LiveVoiceCallModal.show(
-                  context,
-                  languageName: languageName,
-                  flagEmoji: flagEmoji,
-                  systemPrompt: systemPrompt,
-                  ttsLocale: ttsLocale,
-                  sttLocale: sttLocale,
-                  voiceGender: settings.voiceGender,
-                  speechRate: settings.speechRate,
-                );
-              },
-              icon: const Icon(Icons.graphic_eq_rounded, size: 20),
+              onPressed: () => _openLiveModal(context, settings),
+              icon: Icon(
+                isLlmReady
+                    ? Icons.graphic_eq_rounded
+                    : Icons.cloud_download_rounded,
+                size: 20,
+              ),
               label: Text(
-                'Bắt đầu Trò chuyện Live Voice',
+                isLlmReady
+                    ? 'Bắt đầu Trò chuyện Live Voice'
+                    : (settings.isOnDevice
+                        ? (settings.isDownloadingModel
+                            ? 'Đang tải model (${(settings.downloadProgress * 100).toInt()}%)...'
+                            : 'Tải Model AI để Bắt đầu Live')
+                        : 'Kết nối Ollama để Bắt đầu Live'),
                 style: AppTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor:
+                    isLlmReady ? AppColors.primary : AppColors.secondary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 22,
@@ -440,19 +927,25 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
               children: [
                 _buildPromptChip(
                   '💬 Can you introduce yourself?',
+                  context,
                   cubit,
+                  settings,
                   systemPrompt,
                   ttsLocale,
                 ),
                 _buildPromptChip(
                   '☕ Order coffee at Starbucks',
+                  context,
                   cubit,
+                  settings,
                   systemPrompt,
                   ttsLocale,
                 ),
                 _buildPromptChip(
                   '💼 Job interview practice',
+                  context,
                   cubit,
+                  settings,
                   systemPrompt,
                   ttsLocale,
                 ),
@@ -466,7 +959,9 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
 
   Widget _buildPromptChip(
     String label,
+    BuildContext context,
     VoiceChatCubit cubit,
+    SettingsState settings,
     String systemPrompt,
     String ttsLocale,
   ) {
@@ -476,6 +971,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
       side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       onPressed: () {
+        if (!_ensureLlmReady(context, settings)) return;
         cubit.sendMessage(
           content: label.replaceFirst(RegExp(r'^[^\s]+\s'), ''),
           systemPrompt: systemPrompt,
@@ -486,7 +982,9 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   }
 
   Widget _buildQuickPromptChips(
+    BuildContext context,
     VoiceChatCubit cubit,
+    SettingsState settings,
     String systemPrompt,
     String ttsLocale,
   ) {
@@ -522,6 +1020,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             onPressed: () {
+              if (!_ensureLlmReady(context, settings)) return;
               final content = prompt.replaceFirst(RegExp(r'^[^\s]+\s'), '');
               cubit.sendMessage(
                 content: content,
@@ -540,6 +1039,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     BuildContext context,
     VoiceChatCubit cubit,
     VoiceChatState state,
+    SettingsState settings,
     String systemPrompt,
     String ttsLocale,
     String sttLocale,
@@ -550,7 +1050,13 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (_showPromptChips)
-          _buildQuickPromptChips(cubit, systemPrompt, ttsLocale),
+          _buildQuickPromptChips(
+            context,
+            cubit,
+            settings,
+            systemPrompt,
+            ttsLocale,
+          ),
         MessengerInputBar(
           controller: _textController,
           focusNode: _focusNode,
@@ -565,10 +1071,12 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             });
           },
           onStartListening: () {
+            if (!_ensureLlmReady(context, settings)) return;
             _textController.clear();
             cubit.startListening(locale: sttLocale);
           },
           onStopListeningAndSend: () {
+            if (!_ensureLlmReady(context, settings)) return;
             _textController.clear();
             cubit.stopListeningAndSend(
               systemPrompt: systemPrompt,
@@ -593,6 +1101,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             _textController.clear();
           },
           onSendMessage: (text) {
+            if (!_ensureLlmReady(context, settings)) return;
             cubit.sendMessage(
               content: text,
               systemPrompt: systemPrompt,

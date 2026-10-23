@@ -1,12 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:echo_lingua/core/services/device_profile_service.dart';
 import 'package:echo_lingua/features/audio/domain/repositories/audio_repository.dart';
 import 'package:echo_lingua/features/language/data/language_registry.dart';
 import 'package:echo_lingua/features/language/domain/entities/language_profile.dart';
 import 'package:echo_lingua/features/llm/data/services/adaptive_llm_service.dart';
 import 'package:echo_lingua/features/llm/data/services/model_manager.dart';
+import 'package:echo_lingua/features/llm/data/services/ollama_llm_service.dart';
+import 'package:echo_lingua/features/llm/domain/entities/real_model_spec.dart';
 import 'package:echo_lingua/features/llm/domain/services/llm_service.dart';
 
 import 'settings_state.dart';
@@ -16,6 +20,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   final LlmService llmService;
   final AudioRepository? audioRepository;
   final ModelManager? modelManager;
+  final DeviceProfileService? deviceProfileService;
 
   StreamSubscription<ModelDownloadProgress>? _downloadSubscription;
 
@@ -30,6 +35,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     required this.llmService,
     this.audioRepository,
     this.modelManager,
+    this.deviceProfileService,
   }) : super(const SettingsState()) {
     _initListeners();
     _loadPreferences();
@@ -107,6 +113,11 @@ class SettingsCubit extends Cubit<SettingsState> {
     final approxFraction =
         hasPart ? (partSizeBytes / (360 * 1024 * 1024)).clamp(0.0, 1.0) : 0.0;
 
+    DeviceProfile? deviceProfile;
+    if (deviceProfileService != null) {
+      deviceProfile = await deviceProfileService!.getDeviceProfile();
+    }
+
     emit(
       state.copyWith(
         executionMode: mode,
@@ -122,6 +133,7 @@ class SettingsCubit extends Cubit<SettingsState> {
         downloadStatusText: hasPart
             ? 'Đang có bản tải dở ($partMb MB / ~360 MB). Bấm để tải tiếp.'
             : '',
+        deviceProfile: deviceProfile,
       ),
     );
 
@@ -205,9 +217,33 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   Future<void> testVoicePlayback() async {
     final isMale = state.voiceGender == 'male';
-    final sampleText = isMale
-        ? 'Hello! I am your AI English tutor. Nice to meet you!'
-        : 'Hi there! I am your English coach. Glad to talk with you!';
+    final lang = state.currentLanguage.code.toLowerCase();
+
+    String sampleText;
+    switch (lang) {
+      case 'vi':
+        sampleText = isMale
+            ? 'Xin chào! Tôi là gia sư nam AI của bạn. Rất vui được đồng hành cùng bạn.'
+            : 'Xin chào bạn! Mình là gia sư nữ AI. Rất vui được đồng hành cùng bạn.';
+        break;
+      case 'ja':
+        sampleText = isMale
+            ? 'こんにちは！AIの男性講師です。よろしくお願いします。'
+            : 'こんにちは！AIの女性講師です。よろしくお願いします。';
+        break;
+      case 'ko':
+        sampleText = isMale
+            ? '안녕하세요! AI 남성 튜터입니다. 반갑습니다.'
+            : '안녕하세요! AI 여성 튜터입니다. 반갑습니다.';
+        break;
+      case 'en':
+      default:
+        sampleText = isMale
+            ? 'Hello! I am your male AI tutor. Nice to meet you.'
+            : 'Hi there! I am your female AI coach. Glad to talk with you.';
+        break;
+    }
+
     await audioRepository?.speak(
       sampleText,
       locale: state.currentLanguage.ttsLocale,
@@ -271,6 +307,111 @@ class SettingsCubit extends Cubit<SettingsState> {
           connectionError: e.toString(),
         ),
       );
+    }
+  }
+
+  void toggleSuggestedModelsExpanded() {
+    emit(
+      state.copyWith(
+        isSuggestedModelsExpanded: !state.isSuggestedModelsExpanded,
+      ),
+    );
+  }
+
+  /// Quét lại cấu hình phần cứng thật và đánh giá tương thích với model AI thật
+  Future<void> runDeviceHardwareCheck() async {
+    debugPrint('\n============================================================');
+    debugPrint('🔍 [HARDWARE_CHECK] Người dùng bấm: Kiểm tra máy hợp với model nào');
+    emit(state.copyWith(isCheckingDeviceCompatibility: true));
+
+    try {
+      // 1. Quét mới cấu hình phần cứng thiết bị thời gian thực
+      debugPrint('⏳ [HARDWARE_CHECK] Đang đọc tài nguyên phần cứng thời gian thực...');
+      final profile = await (deviceProfileService?.refreshProfile() ??
+          deviceProfileService?.getDeviceProfile());
+
+      final ramAvailMb = profile?.availableRamMb ?? 2048;
+      final totalRamMb = profile?.totalRamMb ?? 4096;
+      final freeDiskMb = profile?.freeDiskMb ?? 5120;
+
+      final ramAvailGb = (ramAvailMb / 1024).toStringAsFixed(1);
+      final ramTotalGb = (totalRamMb / 1024).toStringAsFixed(1);
+      final romFreeGb = (freeDiskMb / 1024).toStringAsFixed(1);
+
+      debugPrint('📱 [DEVICE] Tên máy: ${profile?.deviceLabel} (${profile?.manufacturer})');
+      debugPrint('💾 [RAM] Khả dụng: ${ramAvailMb.toStringAsFixed(0)} MB (~$ramAvailGb GB) / Tổng: ${totalRamMb.toStringAsFixed(0)} MB (~$ramTotalGb GB)');
+      debugPrint('💽 [STORAGE] Dung lượng trống: ${freeDiskMb.toStringAsFixed(0)} MB (~$romFreeGb GB)');
+      debugPrint('🏆 [TIER] Phân cấp phần cứng: ${profile?.tier.name.toUpperCase()}');
+
+      // 2. Nếu ở chế độ Ollama, thử kết nối tới server để lấy model thật đã cài
+      List<String> installedModels = [];
+      debugPrint('⚙️ [MODE] Chế độ LLM: ${state.isOnDevice ? "On-Device (Cục bộ)" : "Máy chủ Ollama (${state.ollamaBaseUrl})"}');
+      if (!state.isOnDevice) {
+        debugPrint('🌐 [OLLAMA] Đang truy vấn danh sách model thật từ host: ${state.ollamaBaseUrl}/api/tags ...');
+        try {
+          if (llmService is AdaptiveLlmService) {
+            installedModels = await (llmService as AdaptiveLlmService)
+                .ollamaService
+                .getInstalledModelNames();
+          } else if (llmService is OllamaLlmService) {
+            installedModels =
+                await (llmService as OllamaLlmService).getInstalledModelNames();
+          }
+          debugPrint('✅ [OLLAMA] Model đã cài trên máy chủ: ${installedModels.isEmpty ? "Chưa có model nào hoặc máy chủ trống" : installedModels.join(", ")}');
+        } catch (e) {
+          debugPrint('⚠️ [OLLAMA] Không thể kết nối tới Ollama host: $e');
+        }
+      }
+
+      // 3. Đánh giá tương thích chi tiết từng model trong RealModelCatalog
+      debugPrint('📊 [COMPATIBILITY] Đánh giá tương thích từng mô hình với phần cứng hiện tại:');
+      for (final spec in RealModelCatalog.realModels) {
+        final suitability = spec.evaluate(ramAvailMb, freeDiskMb);
+        final statusSymbol = switch (suitability) {
+          ModelSuitability.optimal => '⚡ [RẤT MƯỢT]',
+          ModelSuitability.compatible => '✓ [TƯƠNG THÍCH]',
+          ModelSuitability.demanding => '⚠️ [NẶNG]',
+          ModelSuitability.insufficient => '✕ [THIẾU RAM]',
+        };
+        debugPrint('   $statusSymbol ${spec.id.padRight(14)} (${spec.parameterSize.padRight(5)}) | Cần RAM: ${spec.ramRequirementDisplay.padRight(8)} | Trống: ${spec.storageRequirementDisplay.padRight(8)} -> ${spec.bestFor}');
+      }
+
+      String summary;
+      if (state.isOnDevice) {
+        if (ramAvailMb >= 1200 && freeDiskMb >= 1000) {
+          summary =
+              'Thiết bị có $ramAvailGb GB RAM khả dụng / $ramTotalGb GB ($romFreeGb GB trống). Đủ điều kiện chạy On-Device cực mượt mà không nóng máy!';
+        } else {
+          summary =
+              'RAM khả dụng còn $ramAvailGb GB ($romFreeGb GB trống). Đề xuất dùng Qwen 2.5 0.5B hoặc chuyển sang Máy chủ Ollama.';
+        }
+      } else {
+        if (installedModels.isNotEmpty) {
+          summary =
+              'Tìm thấy ${installedModels.length} model thật trên Ollama Host: ${installedModels.join(', ')}. Cấu hình thiết bị kết nối đàm thoại rất tốt.';
+        } else {
+          summary =
+              'Thiết bị có $ramAvailGb GB RAM khả dụng ($romFreeGb GB trống). Đề xuất: qwen2.5:3b (Tiếng Việt xuất sắc) hoặc qwen2.5:1.5b (siêu nhẹ).';
+        }
+      }
+
+      debugPrint('💡 [SUMMARY] $summary');
+      debugPrint('============================================================\n');
+
+      emit(
+        state.copyWith(
+          deviceProfile: profile,
+          installedOllamaModels: installedModels,
+          isCheckingDeviceCompatibility: false,
+          deviceCheckSummary: summary,
+          isSuggestedModelsExpanded: true,
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('❌ [HARDWARE_CHECK] Gặp lỗi khi kiểm tra thiết bị: $e');
+      debugPrint('$stackTrace');
+      debugPrint('============================================================\n');
+      emit(state.copyWith(isCheckingDeviceCompatibility: false));
     }
   }
 

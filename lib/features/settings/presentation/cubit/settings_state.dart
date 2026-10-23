@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:echo_lingua/core/services/device_profile_service.dart';
 import 'package:echo_lingua/features/language/data/language_registry.dart';
 import 'package:echo_lingua/features/language/domain/entities/language_profile.dart';
 
@@ -20,6 +21,11 @@ class SettingsState extends Equatable {
   final String downloadStatusText;
   final bool hasPartialDownload;
   final String partialDownloadedMb;
+  final DeviceProfile? deviceProfile;
+  final bool isCheckingDeviceCompatibility;
+  final String? deviceCheckSummary;
+  final List<String> installedOllamaModels;
+  final bool isSuggestedModelsExpanded;
 
   const SettingsState({
     this.executionMode = 'ollama',
@@ -37,9 +43,15 @@ class SettingsState extends Equatable {
     this.downloadStatusText = '',
     this.hasPartialDownload = false,
     this.partialDownloadedMb = '0.0',
+    this.deviceProfile,
+    this.isCheckingDeviceCompatibility = false,
+    this.deviceCheckSummary,
+    this.installedOllamaModels = const [],
+    this.isSuggestedModelsExpanded = true,
   });
 
   bool get isOnDevice => executionMode == 'on_device';
+  bool get isLlmReady => connectionStatus == ConnectionStatus.connected;
 
   SettingsState copyWith({
     String? executionMode,
@@ -58,6 +70,12 @@ class SettingsState extends Equatable {
     String? downloadStatusText,
     bool? hasPartialDownload,
     String? partialDownloadedMb,
+    DeviceProfile? deviceProfile,
+    bool? isCheckingDeviceCompatibility,
+    String? deviceCheckSummary,
+    bool clearDeviceCheckSummary = false,
+    List<String>? installedOllamaModels,
+    bool? isSuggestedModelsExpanded,
   }) {
     return SettingsState(
       executionMode: executionMode ?? this.executionMode,
@@ -77,6 +95,16 @@ class SettingsState extends Equatable {
       downloadStatusText: downloadStatusText ?? this.downloadStatusText,
       hasPartialDownload: hasPartialDownload ?? this.hasPartialDownload,
       partialDownloadedMb: partialDownloadedMb ?? this.partialDownloadedMb,
+      deviceProfile: deviceProfile ?? this.deviceProfile,
+      isCheckingDeviceCompatibility:
+          isCheckingDeviceCompatibility ?? this.isCheckingDeviceCompatibility,
+      deviceCheckSummary: clearDeviceCheckSummary
+          ? null
+          : (deviceCheckSummary ?? this.deviceCheckSummary),
+      installedOllamaModels:
+          installedOllamaModels ?? this.installedOllamaModels,
+      isSuggestedModelsExpanded:
+          isSuggestedModelsExpanded ?? this.isSuggestedModelsExpanded,
     );
   }
 
@@ -97,5 +125,10 @@ class SettingsState extends Equatable {
     downloadStatusText,
     hasPartialDownload,
     partialDownloadedMb,
+    deviceProfile,
+    isCheckingDeviceCompatibility,
+    deviceCheckSummary,
+    installedOllamaModels,
+    isSuggestedModelsExpanded,
   ];
 }
